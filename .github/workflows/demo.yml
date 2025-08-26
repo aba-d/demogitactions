@@ -34,3 +34,5 @@ jobs:
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
+          echo "Repo Name : ${{ github.repository }}"
+          echo "Project ID : ${{ vars.PROJECT_ID }}"
