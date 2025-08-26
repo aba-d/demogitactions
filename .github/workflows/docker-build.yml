@@ -1,0 +1,30 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ]   # Run only on main branch push
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Log in to Docker Hub (store secrets in repo settings)
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Build Docker image
+      - name: Build Docker image
+        run: docker build -t my-dockerhub-user/my-dotnet-app:latest .
+
+      # Push Docker image
+      - name: Push Docker image
+        run: docker push my-dockerhub-user/my-dotnet-app:latest
