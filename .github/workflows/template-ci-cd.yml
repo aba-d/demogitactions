@@ -12,7 +12,8 @@ permissions:
   security-events: write
 
 jobs:
-  use-template:
+  dotnet-ci:
+    name: Enterprise .NET Build and Containerization
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
