@@ -1,0 +1,16 @@
+
+name: Use Enterprise CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  use-template:
+    uses: enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
+    with:
+      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      dockerfile-path: './dotnet-ecs-sample/Dockerfile'
+      image-name: 'dotnet-ecs-sample'
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
