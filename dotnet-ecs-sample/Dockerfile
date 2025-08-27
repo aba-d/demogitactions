@@ -4,11 +4,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy only the project file and restore dependencies
-COPY dotnet-ecs-sample.csproj ./
+COPY ./dotnet-ecs-sample/dotnet-ecs-sample.csproj ./
 RUN dotnet restore
 
 # Copy the rest of the source code
-COPY . ./
+COPY ./dotnet-ecs-sample/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Stage 2: Create the runtime image
