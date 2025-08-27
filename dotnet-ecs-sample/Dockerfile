@@ -34,5 +34,7 @@ VOLUME /app
 # Health check configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3   CMD curl --fail http://localhost:80/weatherforecast || exit 1
 
+RUN ls -la /app
+
 EXPOSE 80
 ENTRYPOINT ["dotnet", "dotnet-ecs-sample.dll"]
