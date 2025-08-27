@@ -1,5 +1,5 @@
 
-name: Use Enterprise CI/CD
+name: CI/CD .Net core App
 
 on:
   push:
