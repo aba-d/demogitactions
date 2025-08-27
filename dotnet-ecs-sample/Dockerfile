@@ -15,15 +15,15 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Create a non-root user and switch to it
-RUN addgroup --system appgroup &&     adduser --system --ingroup appgroup appuser &&     mkdir -p /app && chown -R appuser:appgroup /app
-
 # Copy published output from build stage
 COPY --from=build /app/publish ./
 
 # Set default environment variables (can be overridden at runtime)
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+
+# Create a non-root user and switch to it
+RUN addgroup --system appgroup &&     adduser --system --ingroup appgroup appuser &&     mkdir -p /app && chown -R appuser:appgroup /app
 
 # Switch to non-root user
 USER appuser
