@@ -10,7 +10,7 @@ RUN dotnet restore ./dotnet-ecs-sample/dotnet-ecs-sample.csproj
 # Copy the rest of the source code
 COPY ./dotnet-ecs-sample/ ./
 RUN ls -la
-RUN PWD
+RUN pwd
 RUN dotnet build ./dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release --no-restore
 RUN dotnet publish -c Release -o /app/publish
 
