@@ -5,20 +5,20 @@ on:
     branches: [ main ]
 
 jobs:
-  
   build:
     runs-on: ubuntu-latest
-    permissions:
-        security-events: write
-        actions: read
-        contents: read
+    # permissions:
+    #     security-events: write
+    #     actions: read
+    #     contents: read
     
-    strategy:
-          fail-fast: false
-          matrix:
-            language: [ 'csharp' ]   # ✅ not 'dotnet'
+    # strategy:
+    #       fail-fast: false
+    #       matrix:
+    #         language: [ 'csharp' ]   # ✅ not 'dotnet'
 
     steps:
+    
     - name: Checkout code
       uses: actions/checkout@v3
 
@@ -33,40 +33,47 @@ jobs:
     - name: Build
       run: dotnet build ./dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release --no-restore
 
-    # - name: Run tests
-    #   run: dotnet test --no-build --verbosity normal
+    - name: Test (auto-discover *Tests.csproj)
+      run: |
+        set -euo pipefail
+        if git ls-files '*Tests.csproj' >/dev/null 2>&1; then
+          while IFS= read -r t; do
+              echo "Running tests: $t"
+              dotnet test "$t" -c Release --no-build --logger trx
+              done < <(git ls-files '*Tests.csproj')
+        else
+          echo "No test projects found; skipping."
+        fi
+    # SARIF (CodeQL) support for code scanning
+    # - name: Initialize CodeQL
+    #   uses: github/codeql-action/init@v3
+    #   with:
+    #     languages: ${{ matrix.language }}
+    #     build-mode: none
 
-    
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-              # For C#, you can skip building entirely:
-        build-mode: none
+    # - name: Analyze
+    #   uses: github/codeql-action/analyze@v3
+    #   with:
+    #     category: "/language:${{ matrix.language }}"
 
-    - name: Analyze
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{ matrix.language }}"
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-  # docker:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v3
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v1
 
-  #   - name: Login to Amazon ECR
-  #     uses: aws-actions/amazon-ecr-login@v1
-
-  #   - name: Build and push Docker image
-  #     env:
-  #       ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-  #       ECR_REPOSITORY: dotnet-ecs-sample
-  #       IMAGE_TAG: latest
-  #     run: |
-  #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-  #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+        ECR_REPOSITORY: dotnet-ecs-sample
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
 #   deploy:
 #     needs: docker
