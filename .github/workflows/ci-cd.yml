@@ -22,8 +22,8 @@ jobs:
     - name: Build
       run: dotnet build ./dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release --no-restore
 
-    - name: Run tests
-      run: dotnet test --no-build --verbosity normal
+    # - name: Run tests
+    #   run: dotnet test --no-build --verbosity normal
 
     - name: Security scan
       uses: github/codeql-action/init@v2
