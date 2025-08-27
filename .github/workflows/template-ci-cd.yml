@@ -5,6 +5,12 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  actions: read
+  contents: read
+  packages: write
+  security-events: write
+
 jobs:
   use-template:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
