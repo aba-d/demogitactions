@@ -20,7 +20,7 @@ jobs:
       run: dotnet restore ./dotnet-ecs-sample/dotnet-ecs-sample.csproj
 
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build ./dotnet-ecs-sample/dotnet-ecs-sample.csproj --no-restore
 
     - name: Run tests
       run: dotnet test --no-build --verbosity normal
