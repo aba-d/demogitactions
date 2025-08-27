@@ -12,5 +12,3 @@ jobs:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
       image-name: 'dotnet-ecs-sample'
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
