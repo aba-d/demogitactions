@@ -84,7 +84,10 @@ jobs:
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Build Docker image
-      run: docker build -t ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:latest ./dotnet-ecs-sample/Dockerfile
+      run: |
+        ls -la
+        pwd
+        docker build -t ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:latest ./dotnet-ecs-sample/Dockerfile
 
 
   # docker:
