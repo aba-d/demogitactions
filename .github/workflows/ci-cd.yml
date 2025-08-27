@@ -5,8 +5,15 @@ on:
     branches: [ main ]
 
 jobs:
+  
   build:
     runs-on: ubuntu-latest
+    
+    strategy:
+          fail-fast: false
+          matrix:
+            language: [ 'csharp' ]   # ✅ not 'dotnet'
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -25,13 +32,18 @@ jobs:
     # - name: Run tests
     #   run: dotnet test --no-build --verbosity normal
 
-    - name: Security scan
-      uses: github/codeql-action/init@v2
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
       with:
-        languages: dotnet
+        languages: ${{ matrix.language }}
+              # For C#, you can skip building entirely:
+        build-mode: none
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+    - name: Analyze
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
 
   docker:
     needs: build
