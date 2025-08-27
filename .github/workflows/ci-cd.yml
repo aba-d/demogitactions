@@ -7,15 +7,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # permissions:
-    #     security-events: write
-    #     actions: read
-    #     contents: read
+    permissions:
+        security-events: write
+        actions: read
+        contents: read
+        packages: write   # ✅ needed to push to GHCR
     
-    # strategy:
-    #       fail-fast: false
-    #       matrix:
-    #         language: [ 'csharp' ]   # ✅ not 'dotnet'
+    strategy:
+          fail-fast: false
+          matrix:
+            language: [ 'csharp' ]   # ✅ not 'dotnet'
 
     steps:
     
@@ -44,36 +45,59 @@ jobs:
         else
           echo "No test projects found; skipping."
         fi
-    # SARIF (CodeQL) support for code scanning
-    # - name: Initialize CodeQL
-    #   uses: github/codeql-action/init@v3
-    #   with:
-    #     languages: ${{ matrix.language }}
-    #     build-mode: none
+# --- SARIF (CodeQL) support for code scanning ---
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: none
 
-    # - name: Analyze
-    #   uses: github/codeql-action/analyze@v3
-    #   with:
-    #     category: "/language:${{ matrix.language }}"
+    - name: Analyze
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
 
-  docker:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+# --- Container build & push to GHCR ---
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Login to Amazon ECR
-      uses: aws-actions/amazon-ecr-login@v1
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # ✅ no Docker password needed
 
-    - name: Build and push Docker image
-      env:
-        ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-        ECR_REPOSITORY: dotnet-ecs-sample
-        IMAGE_TAG: latest
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build and push image
+      uses: docker/build-push-action@v6
+      with:
+          context: .
+          file: ./dotnet-ecs-sample/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:latest
+            ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # docker:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v3
+
+  #   - name: Login to Amazon ECR
+  #     uses: aws-actions/amazon-ecr-login@v1
+
+  #   - name: Build and push Docker image
+  #     env:
+  #       ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  #       ECR_REPOSITORY: dotnet-ecs-sample
+  #       IMAGE_TAG: latest
+  #     run: |
+  #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+  #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
 #   deploy:
 #     needs: docker
