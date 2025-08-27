@@ -7,7 +7,7 @@ on:
 
 jobs:
   use-template:
-    uses: enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
+    uses: aba-d/enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
