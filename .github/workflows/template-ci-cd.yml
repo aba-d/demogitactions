@@ -14,7 +14,7 @@ permissions:
 jobs:
   dotnet-ci:
     name: .NET Build and Containerization
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/dotnet-ci-template@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/dotnet-ci-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
