@@ -22,7 +22,7 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
     with:
       cluster-name: "test-ecs-cluster"
-      service-name: "ecs-test-service"
+      service-name: "WeatherForecast_api"
       task-family: "ecs-test-task"
       subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
       security-groups: "sg-063ac0f34f2c86baa"
