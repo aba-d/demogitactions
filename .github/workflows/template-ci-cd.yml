@@ -10,7 +10,7 @@ permissions:
   actions: read
   contents: read
   packages: write
-  id-token: write       # ✅ Needed for OIDC with AWS
+  id-token: write  # ✅ Needed for OIDC with AWS
 
 jobs:
   dotnet-ci:
