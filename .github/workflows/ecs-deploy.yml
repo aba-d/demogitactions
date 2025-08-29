@@ -3,6 +3,10 @@ name: Deploy to ECS
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   ecs-task:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
