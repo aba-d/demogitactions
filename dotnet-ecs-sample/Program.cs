@@ -1,25 +1,15 @@
-
-// var builder = WebApplication.CreateBuilder(args);
-// builder.Services.AddControllers();
-// var app = builder.Build();
-// app.MapControllers();
-// app.Run();
-
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add controllers
+// Add services
 builder.Services.AddControllers();
-
-// Add health checks
-builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Map controllers (your existing APIs)
+// Map controllers
 app.MapControllers();
 
-// Map health check endpoint
-app.MapHealthChecks("/health");
+// Add a simple health endpoint for ECS
+app.MapGet("/health", () => Results.Ok("Healthy"));
 
+// Run the app
 app.Run();
