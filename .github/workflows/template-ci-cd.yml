@@ -20,4 +20,4 @@ jobs:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
       image-name: 'dotnet-ecs-sample'
-      ecr-repo: nonprodimagerepository   # ✅ AWS ECR repo
+      ecr-repo: nonprodimagerepository  # ✅ AWS ECR repo
