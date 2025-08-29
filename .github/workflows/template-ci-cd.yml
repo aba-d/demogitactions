@@ -21,3 +21,4 @@ jobs:
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
       image-name: 'dotnet-ecs-sample'
       ecr-repo: nonprodimagerepository  # ✅ AWS ECR repo
+      aws-accountid: '707733857215'
