@@ -11,7 +11,7 @@ jobs:
   ecs-task:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
     with:
-      cluster-name: "ecs-test-cluster"
+      cluster-name: "test-ecs-cluster"
       task-family: "ecs-test-task"
       container-name: "ecs-test-container"
       ecr-repo: "nonprodimagerepository"
@@ -21,7 +21,7 @@ jobs:
     needs: ecs-task
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
     with:
-      cluster-name: "ecs-test-cluster"
+      cluster-name: "test-ecs-cluster"
       service-name: "ecs-test-service"
       task-family: "ecs-test-task"
       subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
