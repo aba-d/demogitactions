@@ -2,6 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# Copy and restore project
 COPY dotnet-ecs-sample/*.csproj ./dotnet-ecs-sample/
 RUN dotnet restore ./dotnet-ecs-sample/dotnet-ecs-sample.csproj
 
@@ -15,7 +16,7 @@ WORKDIR /app
 
 COPY --from=build /app/publish ./
 
-# Force .NET to listen on port 80 (for ECS)
+# ✅ Important for ECS: Force app to listen on port 80
 ENV ASPNETCORE_URLS=http://+:80 \
     DOTNET_RUNNING_IN_CONTAINER=true \
     DOTNET_USE_POLLING_FILE_WATCHER=true \
@@ -23,15 +24,15 @@ ENV ASPNETCORE_URLS=http://+:80 \
     DOTNET_NOLOGO=true \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
 
-# Add non-root user
+# Add non-root user for security
 RUN addgroup --system appgroup && \
     adduser --system --ingroup appgroup appuser && \
     chown -R appuser:appgroup /app
 USER appuser
 
-# Healthcheck for ECS
+# Healthcheck (update if your app has a real endpoint)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl --fail http://localhost:80/health || exit 1
+  CMD curl --fail http://localhost:80/weatherforecast || exit 1
 
 EXPOSE 80
 ENTRYPOINT ["dotnet", "dotnet-ecs-sample.dll"]
