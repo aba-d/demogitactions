@@ -1,121 +1,118 @@
-name: CI/CD Pipeline
+name: CI-CD Pipeline
 
 on:
   push:
     branches: [ main ]
 
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+  packages: write
+  id-token: write
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-        security-events: write
-        actions: read
-        contents: read
-        packages: write   # ✅ needed to push to GHCR
+  # ------------------------
+  # CI Stage (Build + Push to ECR)
+  # ------------------------
+  ci:
+    name: Build and Push Image
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-ci-template.yml@main
+    with:
+      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      dockerfile-path: './dotnet-ecs-sample/Dockerfile'
+      image-name: 'dotnet-ecs-sample'
+      ecr-repo: nonprodimagerepository
+      aws-accountid: '707733857215'
+    secrets: inherit
+
+  # ------------------------
+  # Deploy to Dev (auto)
+  # ------------------------
+  deploy-dev:
+    needs: ci
+    name: Deploy to ECS Dev
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+    with:
+      cluster-name: "test-ecs-cluster"
+      task-family: "ecs-test-task"
+      container-name: "ecs-test-container"
+      ecr-repo: "nonprodimagerepository"
+      aws-accountid: "707733857215"
+      environment: "dev"   # 👈 now you control env here
+    secrets: inherit
     
-    # strategy:
-    #       fail-fast: false
-    #       matrix:
-    #         language: [ 'csharp' ]   # ✅ not 'dotnet'
 
-    steps:
-    
-    - name: Checkout code
-      uses: actions/checkout@v3
+  ecs-service-dev:
+    needs: deploy-dev
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+    with:
+      cluster-name: "test-ecs-cluster"
+      service-name: "WeatherForecast_api"
+      task-family: "ecs-test-task"
+      subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
+      security-groups: "sg-063ac0f34f2c86baa"
+      desired-count: "1"
+      aws-accountid: "707733857215"
+      environment: "dev"   # 👈 now you control env here
+    secrets: inherit
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
+  # ------------------------
+  # Deploy to QA (requires approval)
+  # ------------------------
+  deploy-qa:
+    needs: ecs-service-dev
+    name: Deploy to ECS QA
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+    with:
+      cluster-name: "qa-ecs-cluster"
+      task-family: "ecs-test-task"
+      container-name: "ecs-test-container"
+      ecr-repo: "nonprodimagerepository"
+      aws-accountid: "707733857215"
+      environment: "qa"   # 👈 now you control env here
+    secrets: inherit
 
-    - name: Restore dependencies
-      run: dotnet restore ./dotnet-ecs-sample/dotnet-ecs-sample.csproj
+  ecs-service-qa:
+    needs: deploy-qa
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+    with:
+      cluster-name: "qa-ecs-cluster"
+      service-name: "WeatherForecast_api"
+      task-family: "ecs-test-task"
+      subnets: "subnet-xxx,subnet-yyy"
+      security-groups: "sg-zzz"
+      desired-count: "1"
+      aws-accountid: "707733857215"
+      environment: "qa"   # 👈 now you control env here
+    secrets: inherit
 
-    - name: Build
-      run: dotnet build ./dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release --no-restore
+  # ------------------------
+  # Deploy to Prod (requires approval)
+  # ------------------------
+  deploy-prod:
+    needs: ecs-service-qa
+    name: Deploy to ECS Prod
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+    with:
+      cluster-name: "prod-ecs-cluster"
+      task-family: "ecs-test-task"
+      container-name: "ecs-test-container"
+      ecr-repo: "nonprodimagerepository"
+      aws-accountid: "707733857215"
+      environment: "prod"   # 👈 now you control env here
+    secrets: inherit
 
-    - name: Test (auto-discover *Tests.csproj)
-      run: |
-        set -euo pipefail
-        if git ls-files '*Tests.csproj' >/dev/null 2>&1; then
-          while IFS= read -r t; do
-              echo "Running tests: $t"
-              dotnet test "$t" -c Release --no-build --logger trx
-              done < <(git ls-files '*Tests.csproj')
-        else
-          echo "No test projects found; skipping."
-        fi
-# --- SARIF (CodeQL) support for code scanning ---
-    # - name: Initialize CodeQL
-    #   uses: github/codeql-action/init@v3
-    #   with:
-    #     languages: ${{ matrix.language }}
-    #     build-mode: none
-
-    # - name: Analyze
-    #   uses: github/codeql-action/analyze@v3
-    #   with:
-    #     category: "/language:${{ matrix.language }}"
-
-# --- Container build & push to GHCR ---
-    # - name: Set up Docker Buildx
-    #   uses: docker/setup-buildx-action@v3
-
-    # - name: Log in to GitHub Container Registry
-    #   uses: docker/login-action@v3
-    #   with:
-    #       registry: ghcr.io
-    #       username: ${{ github.actor }}
-    #       password: ${{ secrets.GITHUB_TOKEN }}  # ✅ no Docker password needed
-
-    # - name: Build and push image
-    #   uses: docker/build-push-action@v6
-    #   with:
-    #       context: .
-    #       file: ./dotnet-ecs-sample/Dockerfile
-    #       push: true
-    #       tags: |
-    #         ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:latest
-    #         ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:${{ github.sha }}
-    #       cache-from: type=gha
-    #       cache-to: type=gha,mode=max
-    
-    - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-    - name: Build Docker image
-      run: |
-        ls -la
-        docker build -t ghcr.io/${{ github.repository_owner }}/dotnet-ecs-sample:latest --file ./dotnet-ecs-sample/Dockerfile .
-
-
-  # docker:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v3
-
-  #   - name: Login to Amazon ECR
-  #     uses: aws-actions/amazon-ecr-login@v1
-
-  #   - name: Build and push Docker image
-  #     env:
-  #       ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-  #       ECR_REPOSITORY: dotnet-ecs-sample
-  #       IMAGE_TAG: latest
-  #     run: |
-  #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-  #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-#   deploy:
-#     needs: docker
-#     runs-on: ubuntu-latest
-#     steps:
-#     - name: Deploy to ECS
-#       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-#       with:
-#         task-definition: ecs-task-def.json
-#         service: dotnet-ecs-service
-#         cluster: dotnet-ecs-cluster
-#         wait-for-service-stability: true
+  ecs-service-prod:
+    needs: deploy-prod
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+    with:
+      cluster-name: "prod-ecs-cluster"
+      service-name: "WeatherForecast_api"
+      task-family: "ecs-test-task"
+      subnets: "subnet-aaa,subnet-bbb"
+      security-groups: "sg-ccc"
+      desired-count: "2"
+      aws-accountid: "707733857215"
+      environment: "prod"   # 👈 now you control env here
+    secrets: inherit
