@@ -16,8 +16,8 @@ WORKDIR /app
 
 COPY --from=build /app/publish ./
 
-# ✅ Important for ECS: Force app to listen on port 80
-ENV ASPNETCORE_URLS=http://+:80 \
+# ✅ Important for ECS: Force app to listen on port 8080
+ENV ASPNETCORE_URLS=http://+:8080 \
     DOTNET_RUNNING_IN_CONTAINER=true \
     DOTNET_USE_POLLING_FILE_WATCHER=true \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
@@ -32,7 +32,7 @@ USER appuser
 
 # Healthcheck (update if your app has a real endpoint)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl --fail http://localhost:80/weatherforecast || exit 1
+  CMD curl --fail http://localhost:8080/weatherforecast || exit 1
 
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "dotnet-ecs-sample.dll"]
