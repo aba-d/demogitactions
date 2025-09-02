@@ -1,5 +1,9 @@
 name: Build and Push Docker Image
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   push:
     branches: [ "main" ]   # Run only on main branch push
