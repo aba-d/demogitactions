@@ -13,6 +13,16 @@ permissions:
 
 jobs:
   # ------------------------
+  # CodeQL Security Scan
+  # ------------------------
+  codeql:
+    name: Security Scan (CodeQL)
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql.yml@main
+    with:
+      languages: "csharp"   # or "javascript-typescript,python" etc
+    secrets: inherit
+
+  # ------------------------
   # CI Stage (Build + Push to ECR)
   # ------------------------
   ci:
@@ -84,33 +94,33 @@ jobs:
       environment: "qa"
     secrets: inherit
 
-  # ------------------------
-  # Deploy to Prod (requires approval)
-  # ------------------------
-  deploy-prod:
-    needs: ecs-service-qa
-    name: Deploy to ECS Prod
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
-    with:
-      cluster-name: "prod-ecs-cluster"
-      task-family: "ecs-test-task"
-      container-name: "ecs-test-container"
-      ecr-repo: "nonprodimagerepository"
-      aws-accountid: "707733857215"
-    secrets: inherit
+  # # ------------------------
+  # # Deploy to Prod (requires approval)
+  # # ------------------------
+  # deploy-prod:
+  #   needs: ecs-service-qa
+  #   name: Deploy to ECS Prod
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+  #   with:
+  #     cluster-name: "prod-ecs-cluster"
+  #     task-family: "ecs-test-task"
+  #     container-name: "ecs-test-container"
+  #     ecr-repo: "nonprodimagerepository"
+  #     aws-accountid: "707733857215"
+  #   secrets: inherit
 
-  ecs-service-prod:
-    needs: deploy-prod
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-    with:
-      cluster-name: "prod-ecs-cluster"
-      service-name: "WeatherForecast_api"
-      task-family: "ecs-test-task"
-      subnets: "subnet-aaa,subnet-bbb"
-      security-groups: "sg-ccc"
-      desired-count: "2"
-      aws-accountid: "707733857215"
-      environment: "prod"
-    secrets: inherit
+  # ecs-service-prod:
+  #   needs: deploy-prod
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+  #   with:
+  #     cluster-name: "prod-ecs-cluster"
+  #     service-name: "WeatherForecast_api"
+  #     task-family: "ecs-test-task"
+  #     subnets: "subnet-aaa,subnet-bbb"
+  #     security-groups: "sg-ccc"
+  #     desired-count: "2"
+  #     aws-accountid: "707733857215"
+  #     environment: "prod"
+  #   secrets: inherit
 
     
