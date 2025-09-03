@@ -26,6 +26,7 @@ jobs:
   # CI Stage (Build + Push to ECR)
   # ------------------------
   ci:
+    needs: codeql
     name: Build and Push Image
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-ci-template.yml@main
     with:
