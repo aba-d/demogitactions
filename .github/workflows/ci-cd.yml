@@ -72,7 +72,6 @@ jobs:
 
   ecs-service-qa:
     needs: deploy-qa
-    environment: qa
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
     with:
       cluster-name: "qa-ecs-cluster"
