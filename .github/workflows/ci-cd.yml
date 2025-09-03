@@ -39,9 +39,7 @@ jobs:
       container-name: "ecs-test-container"
       ecr-repo: "nonprodimagerepository"
       aws-accountid: "707733857215"
-      environment: "dev"   # 👈 now you control env here
     secrets: inherit
-    
 
   ecs-service-dev:
     needs: deploy-dev
@@ -54,7 +52,7 @@ jobs:
       security-groups: "sg-063ac0f34f2c86baa"
       desired-count: "1"
       aws-accountid: "707733857215"
-      environment: "dev"   # 👈 now you control env here
+      environment: "dev"
     secrets: inherit
 
   # ------------------------
@@ -70,11 +68,11 @@ jobs:
       container-name: "ecs-test-container"
       ecr-repo: "nonprodimagerepository"
       aws-accountid: "707733857215"
-      environment: "qa"   # 👈 now you control env here
     secrets: inherit
 
   ecs-service-qa:
     needs: deploy-qa
+    environment: qa
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
     with:
       cluster-name: "qa-ecs-cluster"
@@ -84,7 +82,7 @@ jobs:
       security-groups: "sg-zzz"
       desired-count: "1"
       aws-accountid: "707733857215"
-      environment: "qa"   # 👈 now you control env here
+      environment: "qa"
     secrets: inherit
 
   # ------------------------
@@ -100,7 +98,6 @@ jobs:
       container-name: "ecs-test-container"
       ecr-repo: "nonprodimagerepository"
       aws-accountid: "707733857215"
-      environment: "prod"   # 👈 now you control env here
     secrets: inherit
 
   ecs-service-prod:
@@ -114,5 +111,5 @@ jobs:
       security-groups: "sg-ccc"
       desired-count: "2"
       aws-accountid: "707733857215"
-      environment: "prod"   # 👈 now you control env here
+      environment: "prod"
     secrets: inherit
