@@ -23,6 +23,24 @@ public class WeatherForecastController : ControllerBase
             Summary = Summaries[Random.Shared.Next(Summaries.Length)]
         });
     }
+
+    // 🔴 High severity vulnerability: SQL Injection
+    [HttpGet("insecure")]
+        public IActionResult InsecureQuery(string userInput)
+        {
+            // ❌ Vulnerable: SQL injection style string concatenation
+            string query = $"SELECT * FROM Users WHERE Name = '{userInput}'";
+            return Ok("Insecure query: " + query);
+        }
+
+    // 🟡 Medium severity vulnerability: Hardcoded secret
+    [HttpGet("secret")]
+    public IActionResult HardcodedSecret()
+    {
+        // ❌ Vulnerable: hardcoded secret
+        string apiKey = "SuperSecretKey123!";
+        return Ok("Using API key: " + apiKey);
+    }
 }
 
 public class WeatherForecast
