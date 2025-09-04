@@ -16,10 +16,11 @@ jobs:
   # Build + Scan)
   # ------------------------
   build-and-scan:
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/build-scan-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
-      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
-      languages: csharp
+      languages: '["csharp","javascript-typescript"]'
+      build-mode: "manual"   # "none", "autobuild", or "manual"
+      dotnet-version: "8.0.x"
     secrets: inherit
 
   # ------------------------
