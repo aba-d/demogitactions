@@ -12,7 +12,6 @@ permissions:
   id-token: write
 
 jobs:
-  
   # ------------------------
   # Build + Scan)
   # ------------------------
@@ -20,9 +19,9 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/build-scan-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      languages: csharp
     secrets: inherit
-  
-  
+
   # ------------------------
   # CI Stage (Build + Push to ECR)
   # ------------------------
