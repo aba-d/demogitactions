@@ -41,8 +41,6 @@ jobs:
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
-      # image-name: 'dotnet-ecs-sample'
-      # ecr-repo: nonprodimagerepository
       environment: dev
     secrets: inherit
 
