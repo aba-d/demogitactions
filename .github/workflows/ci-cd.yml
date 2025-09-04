@@ -13,12 +13,12 @@ permissions:
 
 jobs:
   # ------------------------
-  # Build + Scan)
+  # Code Scan (Codeql)
   # ------------------------
-  build-and-scan:
+  Codeql-scan:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
-      languages: '["csharp","javascript-typescript"]'
+      languages: '["csharp"]'
       build-mode: "manual"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
     secrets: inherit
@@ -27,7 +27,7 @@ jobs:
   # CI Stage (Build + Push to ECR)
   # ------------------------
   ci:
-    needs: build-and-scan
+    needs: Codeql-scan
     name: Build and Push Image
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-ci-template.yml@main
     with:
