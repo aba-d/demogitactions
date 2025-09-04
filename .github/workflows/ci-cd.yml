@@ -73,13 +73,13 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
       cluster-name: test-ecs-cluster
-      service-name: dotnet-ecs-sample-service
-      task-family: dotnet-ecs-sample-task
-      container-name: dotnet-ecs-sample
+      service-name: WeatherForecast_api
+      task-family: ecs-test-task
+      container-name: ecs-test-container
       ecr-repo: nonprodimagerepository
-      subnets: subnet-12345,subnet-67890
-      security-groups: sg-12345
-      desired-count: "2"
+      subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
+      security-groups: "sg-063ac0f34f2c86baa"
+      desired-count: "1"
       aws-accountid: '707733857215'
       image-tag: ${{ github.sha }}   # 👈 matches the pushed image tag
       environment: dev
