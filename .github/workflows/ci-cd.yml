@@ -41,60 +41,78 @@ jobs:
   # ------------------------
   # Deploy to Dev (auto)
   # ------------------------
-  deploy-dev:
+  # deploy-dev:
+  #   needs: ci
+  #   name: Deploy to ECS Dev
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+  #   with:
+  #     cluster-name: "test-ecs-cluster"
+  #     task-family: "ecs-test-task"
+  #     container-name: "ecs-test-container"
+  #     ecr-repo: "nonprodimagerepository"
+  #     aws-accountid: "707733857215"
+  #   secrets: inherit
+
+  # ecs-service-dev:
+  #   needs: deploy-dev
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+  #   with:
+  #     cluster-name: "test-ecs-cluster"
+  #     service-name: "WeatherForecast_api"
+  #     task-family: "ecs-test-task"
+  #     subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
+  #     security-groups: "sg-063ac0f34f2c86baa"
+  #     desired-count: "1"
+  #     aws-accountid: "707733857215"
+  #     environment: "dev"
+  #   secrets: inherit
+  
+  # ✅ Deploy ECS Task + Service
+  ecs-deploy-dev:
     needs: ci
-    name: Deploy to ECS Dev
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
-      cluster-name: "test-ecs-cluster"
-      task-family: "ecs-test-task"
-      container-name: "ecs-test-container"
-      ecr-repo: "nonprodimagerepository"
-      aws-accountid: "707733857215"
+      cluster-name: test-ecs-cluster
+      service-name: dotnet-ecs-sample-service
+      task-family: dotnet-ecs-sample-task
+      container-name: dotnet-ecs-sample
+      ecr-repo: nonprodimagerepository
+      subnets: subnet-12345,subnet-67890
+      security-groups: sg-12345
+      desired-count: "2"
+      aws-accountid: '707733857215'
+      image-tag: ${{ github.sha }}   # 👈 matches the pushed image tag
+      environment: dev
     secrets: inherit
 
-  ecs-service-dev:
-    needs: deploy-dev
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-    with:
-      cluster-name: "test-ecs-cluster"
-      service-name: "WeatherForecast_api"
-      task-family: "ecs-test-task"
-      subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
-      security-groups: "sg-063ac0f34f2c86baa"
-      desired-count: "1"
-      aws-accountid: "707733857215"
-      environment: "dev"
-    secrets: inherit
+  # # ------------------------
+  # # Deploy to QA (requires approval)
+  # # ------------------------
+  # deploy-qa:
+  #   needs: ecs-service-dev
+  #   name: Deploy to ECS QA
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+  #   with:
+  #     cluster-name: "qa-ecs-cluster"
+  #     task-family: "ecs-test-task"
+  #     container-name: "ecs-test-container"
+  #     ecr-repo: "nonprodimagerepository"
+  #     aws-accountid: "707733857215"
+  #   secrets: inherit
 
-  # ------------------------
-  # Deploy to QA (requires approval)
-  # ------------------------
-  deploy-qa:
-    needs: ecs-service-dev
-    name: Deploy to ECS QA
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
-    with:
-      cluster-name: "qa-ecs-cluster"
-      task-family: "ecs-test-task"
-      container-name: "ecs-test-container"
-      ecr-repo: "nonprodimagerepository"
-      aws-accountid: "707733857215"
-    secrets: inherit
-
-  ecs-service-qa:
-    needs: deploy-qa
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-    with:
-      cluster-name: "qa-ecs-cluster"
-      service-name: "WeatherForecast_api"
-      task-family: "ecs-test-task"
-      subnets: "subnet-xxx,subnet-yyy"
-      security-groups: "sg-zzz"
-      desired-count: "1"
-      aws-accountid: "707733857215"
-      environment: "qa"
-    secrets: inherit
+  # ecs-service-qa:
+  #   needs: deploy-qa
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
+  #   with:
+  #     cluster-name: "qa-ecs-cluster"
+  #     service-name: "WeatherForecast_api"
+  #     task-family: "ecs-test-task"
+  #     subnets: "subnet-xxx,subnet-yyy"
+  #     security-groups: "sg-zzz"
+  #     desired-count: "1"
+  #     aws-accountid: "707733857215"
+  #     environment: "qa"
+  #   secrets: inherit
 
   # # ------------------------
   # # Deploy to Prod (requires approval)
