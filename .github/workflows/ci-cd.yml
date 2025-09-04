@@ -27,7 +27,7 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
-      build-mode: "manual"   # "none", "autobuild", or "manual"
+      build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
     secrets: inherit
 
