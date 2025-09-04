@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 
 namespace dotnet_ecs_sample.Controllers;
 
@@ -24,6 +25,30 @@ public class WeatherForecastController : ControllerBase
         });
     }
 }
+// 🔴 High severity vulnerability: SQL Injection
+    [HttpGet("insecure")]
+    public IActionResult InsecureQuery(string city)
+    {
+        // ❌ Vulnerable: concatenating user input directly into SQL
+        string query = "SELECT * FROM Weather WHERE City = '" + city + "'";
+
+        using (SqlConnection connection = new SqlConnection("Server=.;Database=TestDb;Trusted_Connection=True;"))
+        {
+            SqlCommand command = new SqlCommand(query, connection);
+            connection.Open();
+            var reader = command.ExecuteReader();
+            return Ok("Executed insecure query for city: " + city);
+        }
+    }
+
+    // 🟡 Medium severity vulnerability: Hardcoded secret
+    [HttpGet("secret")]
+    public IActionResult HardcodedSecret()
+    {
+        // ❌ Vulnerable: hardcoded secret
+        string apiKey = "SuperSecretKey123!";
+        return Ok("Using API key: " + apiKey);
+    }
 
 public class WeatherForecast
 {
