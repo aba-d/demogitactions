@@ -20,23 +20,23 @@ permissions:
   id-token: write
 
 jobs:
-  # # ------------------------
-  # # Code Scan (Codeql)
-  # # ------------------------
-  # Codeql-scan:
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
-  #   with:
-  #     languages: '["csharp"]'
-  #     build-mode: "manual"   # "none", "autobuild", or "manual"
-  #     dotnet-version: "8.0.x"
-  #   secrets: inherit
+  # ------------------------
+  # Code Scan (Codeql)
+  # ------------------------
+  Codeql-scan:
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
+    with:
+      languages: '["csharp"]'
+      build-mode: "manual"   # "none", "autobuild", or "manual"
+      dotnet-version: "8.0.x"
+    secrets: inherit
 
   # ------------------------
   # CI Stage (Build + Push to ECR)
   # ------------------------
   ci:
     name: Build and Push Image
-    # needs: Codeql-scan
+    needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
