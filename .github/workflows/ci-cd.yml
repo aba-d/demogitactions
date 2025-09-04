@@ -2,7 +2,15 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'feature/*'
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'feature/*'
+      - 'release/*'
 
 permissions:
   security-events: write
@@ -16,132 +24,70 @@ jobs:
   # Code Scan (Codeql)
   # ------------------------
   Codeql-scan:
+    name: Code scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
-      build-mode: "manual"   # "none", "autobuild", or "manual"
+      build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
     secrets: inherit
 
   # ------------------------
-  # CI Stage (Build + Push to ECR)
+  # CI Stage (Build Image and Push to ECR)
   # ------------------------
   ci:
-    needs: Codeql-scan
     name: Build and Push Image
+    needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
-      image-name: 'dotnet-ecs-sample'
-      ecr-repo: nonprodimagerepository
-      aws-accountid: '707733857215'
+      environment: dev
     secrets: inherit
 
   # ------------------------
-  # Deploy to Dev (auto)
+  # Deploy to Dev (auto) ECS Task + Service
   # ------------------------
-  # deploy-dev:
-  #   needs: ci
-  #   name: Deploy to ECS Dev
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
-  #   with:
-  #     cluster-name: "test-ecs-cluster"
-  #     task-family: "ecs-test-task"
-  #     container-name: "ecs-test-container"
-  #     ecr-repo: "nonprodimagerepository"
-  #     aws-accountid: "707733857215"
-  #   secrets: inherit
-
-  # ecs-service-dev:
-  #   needs: deploy-dev
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-  #   with:
-  #     cluster-name: "test-ecs-cluster"
-  #     service-name: "WeatherForecast_api"
-  #     task-family: "ecs-test-task"
-  #     subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
-  #     security-groups: "sg-063ac0f34f2c86baa"
-  #     desired-count: "1"
-  #     aws-accountid: "707733857215"
-  #     environment: "dev"
-  #   secrets: inherit
-  
-  # ✅ Deploy ECS Task + Service
   ecs-deploy-dev:
     needs: ci
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
-      cluster-name: test-ecs-cluster
-      service-name: WeatherForecast_api
-      task-family: ecs-test-task
-      container-name: ecs-test-container
-      ecr-repo: nonprodimagerepository
-      subnets: "subnet-05741c5e17cae42e3,subnet-08a31fa8b5dec1cfa"
-      security-groups: "sg-063ac0f34f2c86baa"
-      desired-count: "1"
-      aws-accountid: '707733857215'
-      image-tag: ${{ github.sha }}   # 👈 matches the pushed image tag
+      service-name: ${{ vars.SERVICE_NAME }}
+      task-family: ${{ vars.TASK_FAMILY }}
+      container-name: ${{ vars.CONTAINER_NAME }}
+      desired-count: ${{ vars.DESIRED_COUNT }}
+      image-tag: ${{ github.sha }}
       environment: dev
     secrets: inherit
 
   # # ------------------------
   # # Deploy to QA (requires approval)
   # # ------------------------
-  # deploy-qa:
-  #   needs: ecs-service-dev
-  #   name: Deploy to ECS QA
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+  # ecs-deploy-qa:
+  #   name: Deploy to QA
+  #   needs: ecs-deploy-dev
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
   #   with:
-  #     cluster-name: "qa-ecs-cluster"
-  #     task-family: "ecs-test-task"
-  #     container-name: "ecs-test-container"
-  #     ecr-repo: "nonprodimagerepository"
-  #     aws-accountid: "707733857215"
+  #     service-name: ${{ vars.SERVICE_NAME }}
+  #     task-family: ${{ vars.TASK_FAMILY }}
+  #     container-name: ${{ vars.CONTAINER_NAME }}
+  #     desired-count: ${{ vars.DESIRED_COUNT }}
+  #     image-tag: ${{ github.sha }}
+  #     environment: qa
   #   secrets: inherit
-
-  # ecs-service-qa:
-  #   needs: deploy-qa
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-  #   with:
-  #     cluster-name: "qa-ecs-cluster"
-  #     service-name: "WeatherForecast_api"
-  #     task-family: "ecs-test-task"
-  #     subnets: "subnet-xxx,subnet-yyy"
-  #     security-groups: "sg-zzz"
-  #     desired-count: "1"
-  #     aws-accountid: "707733857215"
-  #     environment: "qa"
-  #   secrets: inherit
-
+  
   # # ------------------------
   # # Deploy to Prod (requires approval)
   # # ------------------------
-  # deploy-prod:
-  #   needs: ecs-service-qa
-  #   name: Deploy to ECS Prod
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-task-template.yml@main
+  # ecs-deploy-prod:
+  #   name: Deploy to Prod
+  #   needs: ecs-deploy-qa
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
   #   with:
-  #     cluster-name: "prod-ecs-cluster"
-  #     task-family: "ecs-test-task"
-  #     container-name: "ecs-test-container"
-  #     ecr-repo: "nonprodimagerepository"
-  #     aws-accountid: "707733857215"
+  #     service-name: ${{ vars.SERVICE_NAME }}
+  #     task-family: ${{ vars.TASK_FAMILY }}
+  #     container-name: ${{ vars.CONTAINER_NAME }}
+  #     desired-count: ${{ vars.DESIRED_COUNT }}
+  #     image-tag: ${{ github.sha }}
+  #     environment: prod
   #   secrets: inherit
-
-  # ecs-service-prod:
-  #   needs: deploy-prod
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-service-template.yml@main
-  #   with:
-  #     cluster-name: "prod-ecs-cluster"
-  #     service-name: "WeatherForecast_api"
-  #     task-family: "ecs-test-task"
-  #     subnets: "subnet-aaa,subnet-bbb"
-  #     security-groups: "sg-ccc"
-  #     desired-count: "2"
-  #     aws-accountid: "707733857215"
-  #     environment: "prod"
-  #   secrets: inherit
-
-
-  
