@@ -24,8 +24,8 @@ public class WeatherForecastController : ControllerBase
             Summary = Summaries[Random.Shared.Next(Summaries.Length)]
         });
     }
-}
-// 🔴 High severity vulnerability: SQL Injection
+
+    // 🔴 High severity vulnerability: SQL Injection
     [HttpGet("insecure")]
     public IActionResult InsecureQuery(string city)
     {
@@ -49,6 +49,7 @@ public class WeatherForecastController : ControllerBase
         string apiKey = "SuperSecretKey123!";
         return Ok("Using API key: " + apiKey);
     }
+}
 
 public class WeatherForecast
 {
