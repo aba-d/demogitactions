@@ -43,7 +43,7 @@ jobs:
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
       image-name: 'dotnet-ecs-sample'
       ecr-repo: nonprodimagerepository
-      aws-accountid: ${{ vars.AWS_ACCOUNTID }}
+      # aws-accountid: ${{ vars.AWS_ACCOUNTID }}
       environment: dev
     secrets: inherit
 
@@ -55,15 +55,15 @@ jobs:
     needs: ci
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
-      cluster-name: test-ecs-cluster
-      service-name: WeatherForecast_api
-      task-family: ecs-test-task
-      container-name: ecs-test-container
-      ecr-repo: nonprodimagerepository
-      subnets: ${{ vars.AWS_SUBNETS }}
-      security-groups: ${{ vars.AWS_SECURITY_GROUPS }}
-      desired-count: "1"
-      aws-accountid: ${{ vars.AWS_ACCOUNTID }}
+      service-name: ${{ vars.SERVICE_NAME }}
+      task-family: ${{ vars.TASK_FAMILY }}
+      container-name: ${{ vars.CONTAINER_NAME }}
+      desired-count: ${{ vars.DESIRED_COUNT }}
+      # aws-accountid: ${{ vars.AWS_ACCOUNTID }}
+      # cluster-name: ${{ vars.AWS_CLUSTER_NAME }}
+      # ecr-repo: ${{ vars.AWS_ECR_REPO }}
+      # subnets: ${{ vars.AWS_SUBNETS }}
+      # security-groups: ${{ vars.AWS_SECURITY_GROUPS }}
       image-tag: ${{ github.sha }}
       environment: dev
     secrets: inherit
@@ -127,4 +127,3 @@ jobs:
   #   secrets: inherit
 
 
-  
