@@ -12,21 +12,22 @@ permissions:
   id-token: write
 
 jobs:
+  
   # ------------------------
-  # CodeQL Security Scan
+  # Build + Scan)
   # ------------------------
-  codeql:
-    name: Security Scan (CodeQL)
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql.yml@main
+  build-and-scan:
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/build-scan-template.yml@main
     with:
-      languages: "csharp"   # or "javascript-typescript,python" etc
+      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
     secrets: inherit
-
+  
+  
   # ------------------------
   # CI Stage (Build + Push to ECR)
   # ------------------------
   ci:
-    needs: codeql
+    needs: build-and-scan
     name: Build and Push Image
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecr-ci-template.yml@main
     with:
