@@ -44,6 +44,7 @@ jobs:
       image-name: 'dotnet-ecs-sample'
       ecr-repo: nonprodimagerepository
       aws-accountid: ${{ vars.AWS_ACCOUNTID }}
+      environment: dev
     secrets: inherit
 
   # ------------------------
