@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 
 namespace dotnet_ecs_sample.Controllers;
 
@@ -27,19 +26,12 @@ public class WeatherForecastController : ControllerBase
 
     // 🔴 High severity vulnerability: SQL Injection
     [HttpGet("insecure")]
-    public IActionResult InsecureQuery(string city)
-    {
-        // ❌ Vulnerable: concatenating user input directly into SQL
-        string query = "SELECT * FROM Weather WHERE City = '" + city + "'";
-
-        using (SqlConnection connection = new SqlConnection("Server=.;Database=TestDb;Trusted_Connection=True;"))
+        public IActionResult InsecureQuery(string userInput)
         {
-            SqlCommand command = new SqlCommand(query, connection);
-            connection.Open();
-            var reader = command.ExecuteReader();
-            return Ok("Executed insecure query for city: " + city);
+            // ❌ Vulnerable: SQL injection style string concatenation
+            string query = $"SELECT * FROM Users WHERE Name = '{userInput}'";
+            return Ok("Insecure query: " + query);
         }
-    }
 
     // 🟡 Medium severity vulnerability: Hardcoded secret
     [HttpGet("secret")]
