@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using Microsoft.Data.SqlClient;
+using System.Diagnostics;
 
 namespace dotnet_ecs_sample.Controllers;
 
@@ -24,22 +26,25 @@ public class WeatherForecastController : ControllerBase
         });
     }
 
-    // 🔴 High severity vulnerability: SQL Injection
-    [HttpGet("insecure")]
-        public IActionResult InsecureQuery(string userInput)
-        {
-            // ❌ Vulnerable: SQL injection style string concatenation
-            string query = $"SELECT * FROM Users WHERE Name = '{userInput}'";
-            return Ok("Insecure query: " + query);
-        }
-
-    // 🟡 Medium severity vulnerability: Hardcoded secret
-    [HttpGet("secret")]
-    public IActionResult HardcodedSecret()
+    [HttpGet("sql-injection")]
+    public IActionResult SqlInjection(string userInput)
     {
-        // ❌ Vulnerable: hardcoded secret
-        string apiKey = "SuperSecretKey123!";
-        return Ok("Using API key: " + apiKey);
+        // ❌ Vulnerable: concatenating user input into SQL command
+        var cmd = new SqlCommand(
+            "SELECT * FROM Users WHERE Name = '" + userInput + "'"
+        );
+
+        return Ok("Executed insecure SQL command with input: " + userInput);
+    }
+
+    // ⚠️ Medium severity: Command Injection
+    [HttpGet("command-injection")]
+    public IActionResult CommandInjection(string userInput)
+    {
+        // ❌ Vulnerable: passing user input into system command
+        Process.Start("bash", "-c \"echo " + userInput + "\"");
+
+        return Ok("Executed insecure command with input: " + userInput);
     }
 }
 
