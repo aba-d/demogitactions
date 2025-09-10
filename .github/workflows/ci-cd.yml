@@ -72,11 +72,12 @@ jobs:
               "project": { "key": "SCRUM" },
               "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
               "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-              "issuetype": { "id": "10007" }
+              "issuetype": { "id": "10007" },
+              "parent": { "key": "SCRUM-2" }
             }
           }'
 
-          
+
   # # ------------------------
   # # Deploy to QA (requires approval)
   # # ------------------------
