@@ -27,6 +27,7 @@ jobs:
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
     secrets: inherit
+    
 
   # ------------------------
   # CI Stage (Build Image and Push to ECR)
