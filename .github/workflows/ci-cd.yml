@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - Feature-*
-      - jira_integration
   pull_request:
     branches:
       - main
       - Integration
+      - develop
 
 permissions:
   security-events: write
