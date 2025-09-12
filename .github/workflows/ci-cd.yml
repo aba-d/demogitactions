@@ -57,6 +57,28 @@ jobs:
       image-tag: ${{ github.sha }}
       environment: dev
     secrets: inherit
+    name: CI Pipeline
+
+  notify-jira:
+    runs-on: ubuntu-latest
+    needs: [Codeql-scan, ci, ecs-deploy-dev]
+    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure') }}
+    steps:
+      - name: Create Jira Bug
+        run: |
+          curl -X POST https://abasahebdubal.atlassian.net/rest/api/2/issue \
+          -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "fields": {
+              "project": { "key": "SCRUM" },
+              "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
+              "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "issuetype": { "id": "10007" },
+              "parent": { "key": "SCRUM-2" }
+            }
+          }'
+
 
   # # ------------------------
   # # Deploy to QA (requires approval)
