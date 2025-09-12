@@ -3,10 +3,12 @@ name: CI-CD Pipeline
 on:
   push:
     branches:
-      - '**'
+      - Feature-*
+      - jira_integration
   pull_request:
     branches:
       - main
+      - Integration
 
 permissions:
   security-events: write
