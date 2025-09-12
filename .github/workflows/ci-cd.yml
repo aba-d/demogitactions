@@ -3,10 +3,11 @@ name: CI-CD Pipeline
 on:
   push:
     branches:
-      - '**'
+      - Feature-*
   pull_request:
     branches:
       - main
+      - Integration
 
 permissions:
   security-events: write
