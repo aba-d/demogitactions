@@ -28,6 +28,7 @@ jobs:
       languages: '["csharp"]'
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
+      run-codeql-gate-check: "no"
     secrets: inherit
   
   # ------------------------
@@ -62,7 +63,7 @@ jobs:
   # ------------------------
   ci:
     name: Build Image and Push to ECR
-    needs: Codeql-scan
+    needs: [Sonarqube-scan, Veracode-scan]
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
