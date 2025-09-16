@@ -22,19 +22,46 @@ jobs:
   # Code Scan (Codeql)
   # ------------------------
   Codeql-scan:
-    name: Code scan
+    name: GHAS scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
     secrets: inherit
+  
+  # ------------------------
+  # Veracode
+  # ------------------------
+  Veracode-scan:
+    name: Veracode scan
+    needs: Codeql-scan
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
+    with:
+      run-veracode-gate-check: "yes"
+    secrets: inherit
+  
+  # ------------------------
+  # Sonarqube scan
+  # ------------------------
+  Sonarqube-scan:
+    name: Sonarqube scan
+    needs: Codeql-scan
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
+    with:
+      projectKey: 'your-dotnet-project-key'
+      projectName: 'Your .NET Project'
+      run-sonarqube-gate-check: "yes"
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+  
   # ------------------------
   # CI Stage (Build Image and Push to ECR)
   # ------------------------
   ci:
-    name: Build and Push Image
+    name: Build Image and Push to ECR
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
