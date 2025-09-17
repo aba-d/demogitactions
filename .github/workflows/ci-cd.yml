@@ -51,8 +51,8 @@ jobs:
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
     with:
-      projectKey: 'ecssample'
-      projectName: 'Weather Forecast'
+      projectKey: 'aba-d_demogitactions'
+      projectName: 'demogitactions'
       projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
       run-sonarqube-gate-check: "yes"
       organizationKey: org-testfordemo
