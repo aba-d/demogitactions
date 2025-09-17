@@ -53,6 +53,7 @@ jobs:
     with:
       projectKey: 'ecssample'
       projectName: 'Weather Forecast'
+      projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
       run-sonarqube-gate-check: "yes"
       organizationKey: org-testfordemo
     secrets:
