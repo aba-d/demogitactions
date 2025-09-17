@@ -1,6 +1,7 @@
 name: CI-CD Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - Feature-*
@@ -22,20 +23,49 @@ jobs:
   # Code Scan (Codeql)
   # ------------------------
   Codeql-scan:
-    name: Code scan
+    name: GHAS scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
+      run-codeql-gate-check: "no"
     secrets: inherit
+  
+  # ------------------------
+  # Veracode
+  # ------------------------
+  Veracode-scan:
+    name: Veracode scan
+    needs: Codeql-scan
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
+    with:
+      run-veracode-gate-check: "yes"
+    secrets: inherit
+  
+  # ------------------------
+  # Sonarqube scan
+  # ------------------------
+  Sonarqube-scan:
+    name: Sonarqube scan
+    needs: Codeql-scan
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
+    with:
+      projectKey: 'aba-d_demogitactions'
+      projectName: 'demogitactions'
+      projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
+      run-sonarqube-gate-check: "yes"
+      organizationKey: org-testfordemo
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   # ------------------------
   # CI Stage (Build Image and Push to ECR)
   # ------------------------
   ci:
-    name: Build and Push Image
-    needs: Codeql-scan
+    name: Build Image and Push to ECR
+    needs: [Sonarqube-scan, Veracode-scan]
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
@@ -61,8 +91,8 @@ jobs:
 
   notify-jira:
     runs-on: ubuntu-latest
-    needs: [Codeql-scan, ci, ecs-deploy-dev]
-    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure') }}
+    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan]
+    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure' || needs.Sonarqube-scan.result == 'failure' || needs.Veracode-scan.result == 'failure')}}
     steps:
       - name: Create Jira Bug
         run: |
@@ -78,7 +108,6 @@ jobs:
               "parent": { "key": "SCRUM-2" }
             }
           }'
-
 
   # # ------------------------
   # # Deploy to QA (requires approval)
@@ -111,3 +140,4 @@ jobs:
   #     image-tag: ${{ github.sha }}
   #     environment: prod
   #   secrets: inherit
+
