@@ -1,42 +1,27 @@
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
+
+using dotnet_ecs_sample.Controllers;
 using System.Linq;
+using Xunit;
 
-namespace dotnet_ecs_sample.Controllers
+namespace dotnet_ecs_sample.Tests
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class WeatherForecastControllerTests
     {
-        private static readonly string[] Summaries = new[]
+        [Fact]
+        public void Get_ReturnsFiveForecasts()
         {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
+            var controller = new WeatherForecastController();
+            var result = controller.Get();
+            Assert.Equal(5, result.Count());
+        }
 
-        [HttpGet]
-        public IEnumerable<WeatherForecast> Get()
+        [Fact]
+        public void Get_ReturnsForecastsWithValidTemperature()
         {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateTime.Now.AddDays(index),
-                TemperatureC = rng.Next(-20, 55),
-                Summary = Summaries[rng.Next(Summaries.Length)]
-            })
-            .ToArray();
+            var controller = new WeatherForecastController();
+            var result = controller.Get();
+            Assert.All(result, forecast =>
+                Assert.InRange(forecast.TemperatureC, -20, 55));
         }
     }
-
-    public class WeatherForecast
-    {
-        public DateTime Date { get; set; }
-        public int TemperatureC { get; set; }
-       .cs`
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
-var app = builder.Build();
-app.MapControllers();
-app.Run();
+}
