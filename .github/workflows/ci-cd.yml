@@ -32,7 +32,7 @@ jobs:
       dotnet-version: "8.0.x"
       run-codeql-gate-check: "no"
       projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
-      testProjectPath: "dotnet-ecs-sample/dotnet-ecs-sample.Tests"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
     secrets: inherit
   
   # ------------------------
@@ -57,7 +57,7 @@ jobs:
       projectKey: 'aba-d_demogitactions'
       projectName: 'demogitactions'
       projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
-      testProjectPath: "dotnet-ecs-sample/dotnet-ecs-sample.Tests"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
       run-sonarqube-gate-check: "yes"
       organizationKey: org-testfordemo
     secrets:
