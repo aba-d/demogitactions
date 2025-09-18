@@ -77,21 +77,21 @@ jobs:
       environment: dev
     secrets: inherit
 
-  # # ------------------------
-  # # Deploy to Dev (auto) ECS Task + Service
-  # # ------------------------
-  # ecs-deploy-dev:
-  #   needs: ci
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
-  #   with:
-  #     service-name: ${{ vars.SERVICE_NAME }}
-  #     task-family: ${{ vars.TASK_FAMILY }}
-  #     container-name: ${{ vars.CONTAINER_NAME }}
-  #     desired-count: ${{ vars.DESIRED_COUNT }}
-  #     image-tag: ${{ github.sha }}
-  #     environment: dev
-  #   secrets: inherit
-  #   name: CI Pipeline
+  # ------------------------
+  # Deploy to Dev (auto) ECS Task + Service
+  # ------------------------
+  ecs-deploy-dev:
+    needs: ci
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+    with:
+      service-name: ${{ vars.SERVICE_NAME }}
+      task-family: ${{ vars.TASK_FAMILY }}
+      container-name: ${{ vars.CONTAINER_NAME }}
+      desired-count: ${{ vars.DESIRED_COUNT }}
+      image-tag: ${{ github.sha }}
+      environment: dev
+    secrets: inherit
+    name: CI Pipeline
 
   # ------------------------
   # Notify the Jira
