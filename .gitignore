@@ -31,3 +31,6 @@ coverage/
 *.coverage
 *.coveragexml
 coverage.cobertura.xml
+
+# SonarScanner temporary files
+.sonarqube/
