@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-// using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Diagnostics;
 
 namespace dotnet_ecs_sample.Controllers;
@@ -26,26 +26,26 @@ public class WeatherForecastController : ControllerBase
         });
     }
 
-    // [HttpGet("sql-injection")]
-    // public IActionResult SqlInjection(string userInput)
-    // {
-    //     // ❌ Vulnerable: concatenating user input into SQL command
-    //     var cmd = new SqlCommand(
-    //         "SELECT * FROM Users WHERE Name = '" + userInput + "'"
-    //     );
+    [HttpGet("sql-injection")]
+    public IActionResult SqlInjection(string userInput)
+    {
+        // ❌ Vulnerable: concatenating user input into SQL command
+        var cmd = new SqlCommand(
+            "SELECT * FROM Users WHERE Name = '" + userInput + "'"
+        );
 
-    //     return Ok("Executed insecure SQL command with input: " + userInput);
-    // }
+        return Ok("Executed insecure SQL command with input: " + userInput);
+    }
 
-    // // ⚠️ Medium severity: Command Injection
-    // [HttpGet("command-injection")]
-    // public IActionResult CommandInjection(string userInput)
-    // {
-    //     // ❌ Vulnerable: passing user input into system command
-    //     Process.Start("bash", "-c \"echo " + userInput + "\"");
+    // ⚠️ Medium severity: Command Injection
+    [HttpGet("command-injection")]
+    public IActionResult CommandInjection(string userInput)
+    {
+        // ❌ Vulnerable: passing user input into system command
+        Process.Start("bash", "-c \"echo " + userInput + "\"");
 
-    //     return Ok("Executed insecure command with input: " + userInput);
-    // }
+        return Ok("Executed insecure command with input: " + userInput);
+    }
 }
 
 public class WeatherForecast
