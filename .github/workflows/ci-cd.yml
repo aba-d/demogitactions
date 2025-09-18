@@ -64,18 +64,18 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  # ------------------------
-  # CI Stage (Build Image and Push to ECR)
-  # ------------------------
-  ci:
-    name: Build Image and Push to ECR
-    needs: [Sonarqube-scan, Veracode-scan]
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
-    with:
-      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
-      dockerfile-path: './dotnet-ecs-sample/Dockerfile'
-      environment: dev
-    secrets: inherit
+  # # ------------------------
+  # # CI Stage (Build Image and Push to ECR)
+  # # ------------------------
+  # ci:
+  #   name: Build Image and Push to ECR
+  #   needs: [Sonarqube-scan, Veracode-scan]
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
+  #   with:
+  #     project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+  #     dockerfile-path: './dotnet-ecs-sample/Dockerfile'
+  #     environment: dev
+  #   secrets: inherit
 
   # # ------------------------
   # # Deploy to Dev (auto) ECS Task + Service
