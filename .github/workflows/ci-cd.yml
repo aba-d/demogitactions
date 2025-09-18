@@ -31,6 +31,8 @@ jobs:
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
       dotnet-version: "8.0.x"
       run-codeql-gate-check: "no"
+      projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
     secrets: inherit
   
   # ------------------------
@@ -55,6 +57,7 @@ jobs:
       projectKey: 'aba-d_demogitactions'
       projectName: 'demogitactions'
       projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
       run-sonarqube-gate-check: "yes"
       organizationKey: org-testfordemo
     secrets:
@@ -74,41 +77,44 @@ jobs:
       environment: dev
     secrets: inherit
 
-  # ------------------------
-  # Deploy to Dev (auto) ECS Task + Service
-  # ------------------------
-  ecs-deploy-dev:
-    needs: ci
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
-    with:
-      service-name: ${{ vars.SERVICE_NAME }}
-      task-family: ${{ vars.TASK_FAMILY }}
-      container-name: ${{ vars.CONTAINER_NAME }}
-      desired-count: ${{ vars.DESIRED_COUNT }}
-      image-tag: ${{ github.sha }}
-      environment: dev
-    secrets: inherit
-    name: CI Pipeline
+  # # ------------------------
+  # # Deploy to Dev (auto) ECS Task + Service
+  # # ------------------------
+  # ecs-deploy-dev:
+  #   needs: ci
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+  #   with:
+  #     service-name: ${{ vars.SERVICE_NAME }}
+  #     task-family: ${{ vars.TASK_FAMILY }}
+  #     container-name: ${{ vars.CONTAINER_NAME }}
+  #     desired-count: ${{ vars.DESIRED_COUNT }}
+  #     image-tag: ${{ github.sha }}
+  #     environment: dev
+  #   secrets: inherit
+  #   name: CI Pipeline
 
-  notify-jira:
-    runs-on: ubuntu-latest
-    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan]
-    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure' || needs.Sonarqube-scan.result == 'failure' || needs.Veracode-scan.result == 'failure')}}
-    steps:
-      - name: Create Jira Bug
-        run: |
-          curl -X POST https://abasahebdubal.atlassian.net/rest/api/2/issue \
-          -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "fields": {
-              "project": { "key": "SCRUM" },
-              "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
-              "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-              "issuetype": { "id": "10007" },
-              "parent": { "key": "SCRUM-2" }
-            }
-          }'
+  # # ------------------------
+  # # Notify the Jira
+  # # ------------------------
+  # notify-jira:
+  #   runs-on: ubuntu-latest
+  #   needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan]
+  #   if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure' || needs.Sonarqube-scan.result == 'failure' || needs.Veracode-scan.result == 'failure')}}
+  #   steps:
+  #     - name: Create Jira Bug
+  #       run: |
+  #         curl -X POST https://abasahebdubal.atlassian.net/rest/api/2/issue \
+  #         -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
+  #         -H "Content-Type: application/json" \
+  #         -d '{
+  #           "fields": {
+  #             "project": { "key": "SCRUM" },
+  #             "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
+  #             "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+  #             "issuetype": { "id": "10007" },
+  #             "parent": { "key": "SCRUM-2" }
+  #           }
+  #         }'
 
   # # ------------------------
   # # Deploy to QA (requires approval)
