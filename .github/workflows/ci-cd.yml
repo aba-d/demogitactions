@@ -58,7 +58,7 @@ jobs:
       projectName: 'demogitactions'
       projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
       testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
-      run-sonarqube-gate-check: "no"
+      run-sonarqube-gate-check: "yes"
       organizationKey: org-testfordemo
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
