@@ -57,6 +57,8 @@ jobs:
       projectKey: 'org-testfordemo_myapp-netcore'
       organizationKey: org-testfordemo
       run-sonarqube-gate-check: "no"
+      projectSlnPath: "demogitactions.sln"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
