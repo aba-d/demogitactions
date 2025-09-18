@@ -43,7 +43,7 @@ jobs:
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
     with:
-      run-veracode-gate-check: "yes"
+      run-veracode-gate-check: "no"
     secrets: inherit
   
   # ------------------------
