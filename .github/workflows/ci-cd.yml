@@ -39,7 +39,7 @@ jobs:
   # Veracode
   # ------------------------
   Veracode-scan:
-    name: Veracode scan
+    name: Veracode SAST
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
     with:
@@ -50,7 +50,7 @@ jobs:
   # Sonarqube scan
   # ------------------------
   Sonarqube-scan:
-    name: Sonarqube scan
+    name: Test Coverage
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
     with:
@@ -67,7 +67,7 @@ jobs:
   # CI Stage (Build Image and Push to ECR)
   # ------------------------
   ci:
-    name: Build Image and Push to ECR
+    name: Build Scan and Push Image to ECR
     needs: [Sonarqube-scan, Veracode-scan]
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
@@ -80,6 +80,7 @@ jobs:
   # Deploy to Dev (auto) ECS Task + Service
   # ------------------------
   ecs-deploy-dev:
+    name: Deploy to Dev
     needs: ci
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
@@ -90,15 +91,37 @@ jobs:
       image-tag: ${{ github.sha }}
       environment: dev
     secrets: inherit
-    name: CI Pipeline
+
+  # # ------------------------
+  # # Deploy to QA (requires approval)
+  # # ------------------------
+  ecs-deploy-qa:
+    name: Deploy to QA
+    needs: ecs-deploy-dev
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+    with:
+      service-name: ${{ vars.SERVICE_NAME }}
+      task-family: ${{ vars.TASK_FAMILY }}
+      container-name: ${{ vars.CONTAINER_NAME }}
+      desired-count: ${{ vars.DESIRED_COUNT }}
+      image-tag: ${{ github.sha }}
+      environment: qa
+    secrets: inherit
 
   # ------------------------
   # Notify the Jira
   # ------------------------
   notify-jira:
+    name: Jira Notify
     runs-on: ubuntu-latest
-    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan]
-    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure' || needs.Sonarqube-scan.result == 'failure' || needs.Veracode-scan.result == 'failure')}}
+    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan, ecs-deploy-qa]
+    if: |
+      needs.Codeql-scan.result == 'failure' ||
+      needs.ci.result == 'failure' ||
+      needs.ecs-deploy-dev.result == 'failure' ||
+      needs.Sonarqube-scan.result == 'failure' ||
+      needs.Veracode-scan.result == 'failure' ||
+      (needs.ecs-deploy-qa.result != 'cancelled' && needs.ecs-deploy-qa.result == 'failure')
     steps:
       - name: Create Jira Bug
         run: |
@@ -114,21 +137,6 @@ jobs:
               "parent": { "key": "SCRUM-2" }
             }
           }'
-  # # ------------------------
-  # # Deploy to QA (requires approval)
-  # # ------------------------
-  # ecs-deploy-qa:
-  #   name: Deploy to QA
-  #   needs: ecs-deploy-dev
-  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
-  #   with:
-  #     service-name: ${{ vars.SERVICE_NAME }}
-  #     task-family: ${{ vars.TASK_FAMILY }}
-  #     container-name: ${{ vars.CONTAINER_NAME }}
-  #     desired-count: ${{ vars.DESIRED_COUNT }}
-  #     image-tag: ${{ github.sha }}
-  #     environment: qa
-  #   secrets: inherit
   
   # # ------------------------
   # # Deploy to Prod (requires approval)
