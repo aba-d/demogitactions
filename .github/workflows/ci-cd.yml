@@ -80,7 +80,7 @@ jobs:
   # Deploy to Dev (auto) ECS Task + Service
   # ------------------------
   ecs-deploy-dev:
-    name: Dev Deployment
+    name: Dev
     needs: ci
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
@@ -96,7 +96,7 @@ jobs:
   # # Deploy to QA (requires approval)
   # # ------------------------
   ecs-deploy-qa:
-    name: QA Deployment
+    name: QA
     needs: ecs-deploy-dev
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
