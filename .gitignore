@@ -1,0 +1,36 @@
+# Build outputs
+bin/
+obj/
+TestResults/
+*.dll
+*.exe
+*.log
+*.vsix
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains IDE files
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# Mac OS files
+.DS_Store
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Coverage reports
+coverage/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+# SonarScanner temporary files
+.sonarqube/

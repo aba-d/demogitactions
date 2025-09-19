@@ -54,12 +54,11 @@ jobs:
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
     with:
-      projectKey: 'aba-d_demogitactions'
-      projectName: 'demogitactions'
-      projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
-      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
-      run-sonarqube-gate-check: "yes"
+      projectKey: 'org-testfordemo_myapp-netcore'
       organizationKey: org-testfordemo
+      run-sonarqube-gate-check: "no"
+      projectSlnPath: "demogitactions.sln"
+      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
