@@ -39,7 +39,7 @@ jobs:
   # Veracode
   # ------------------------
   Veracode-scan:
-    name: Veracode scan
+    name: Veracode SAST
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
     with:
@@ -50,7 +50,7 @@ jobs:
   # Sonarqube scan
   # ------------------------
   Sonarqube-scan:
-    name: Sonarqube scan
+    name: Test Coverage
     needs: Codeql-scan
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
     with:
@@ -67,7 +67,7 @@ jobs:
   # CI Stage (Build Image and Push to ECR)
   # ------------------------
   ci:
-    name: Build Image and Push to ECR
+    name: Build and Push Image to ECR
     needs: [Sonarqube-scan, Veracode-scan]
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
@@ -112,9 +112,11 @@ jobs:
   # Notify the Jira
   # ------------------------
   notify-jira:
+    name: Jira Notify
     runs-on: ubuntu-latest
-    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan]
-    if: ${{ always() && (needs.Codeql-scan.result == 'failure' || needs.ci.result == 'failure' || needs.ecs-deploy-dev.result == 'failure' || needs.Sonarqube-scan.result == 'failure' || needs.Veracode-scan.result == 'failure')}}
+    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan, ecs-deploy-qa]
+    if: |
+      always() && needs.ecs-deploy-qa.result != 'cancelled' && failure()
     steps:
       - name: Create Jira Bug
         run: |
