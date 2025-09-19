@@ -15,14 +15,16 @@ dotnet sonarscanner begin \
   /k:"$PROJECT_KEY" \
   /d:sonar.host.url="$SONAR_HOST" \
   /d:sonar.token="$SONAR_TOKEN" \
-  /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+  /d:sonar.cs.opencover.reportsPaths="./coverage/**/coverage.opencover.xml" \
+  /d:sonar.sources="./"
 
 # 2️⃣ Build solution
-dotnet build
+dotnet build --configuration Release
 
 # 3️⃣ Run tests with coverage
 dotnet test ./dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj \
   --collect:"XPlat Code Coverage" \
+  --results-directory ./coverage \
   -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
 # 4️⃣ End analysis (upload results)
