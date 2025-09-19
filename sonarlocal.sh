@@ -17,7 +17,6 @@ dotnet sonarscanner begin \
   /d:sonar.token="$SONAR_TOKEN" \
   /d:sonar.cs.opencover.reportsPaths="./coverage/**/coverage.opencover.xml" \
   /d:sonar.exclusions="**/bin/**,**/obj/**,**/*.json,**/*.config,**/*.md,**/*.yml,**/Dockerfile" \
-  /d:sonar.test.inclusions="**/*.cs" \
   /d:sonar.test.exclusions="**/bin/**,**/obj/**"
 
 # 2️⃣ Build solution
