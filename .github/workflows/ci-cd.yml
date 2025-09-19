@@ -115,16 +115,13 @@ jobs:
     name: Jira Notify
     runs-on: ubuntu-latest
     needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan, ecs-deploy-qa]
-    if: >
-        always() &&
-        (
-          needs.Codeql-scan.result == 'failure' ||
-          needs.ci.result == 'failure' ||
-          needs.ecs-deploy-dev.result == 'failure' ||
-          needs.Sonarqube-scan.result == 'failure' ||
-          needs.Veracode-scan.result == 'failure' ||
-          (needs.ecs-deploy-qa.result != 'cancelled' && needs.ecs-deploy-qa.result == 'failure')
-        )
+    if: |
+      needs.Codeql-scan.result == 'failure' ||
+      needs.ci.result == 'failure' ||
+      needs.ecs-deploy-dev.result == 'failure' ||
+      needs.Sonarqube-scan.result == 'failure' ||
+      needs.Veracode-scan.result == 'failure' ||
+      (needs.ecs-deploy-qa.result != 'cancelled' && needs.ecs-deploy-qa.result == 'failure')
     steps:
       - name: Create Jira Bug
         run: |
