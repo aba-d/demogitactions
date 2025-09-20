@@ -50,9 +50,33 @@ namespace dotnet_ecs_sample.Tests
         {
             var controller = new WeatherForecastController();
             var result = controller.Get();
-            
+
             // This test ensures no temperature is outside expected range
             Assert.DoesNotContain(result, f => f.TemperatureC < -20 || f.TemperatureC > 55);
         }
+
+        // SQL Injection endpoint
+        [Fact]
+        public void SqlInjection_ReturnsExpectedMessage()
+        {
+            var controller = new WeatherForecastController();
+            var input = "testUser";
+            var result = controller.SqlInjection(input) as OkObjectResult;
+            Assert.NotNull(result);
+            Assert.Contains(input, result.Value.ToString());
+        }
+
+        // Command Injection endpoint
+
+        [Fact]
+        public void CommandInjection_ReturnsExpectedMessage()
+        {
+            var controller = new WeatherForecastController();
+            var input = "hello";
+            var result = controller.CommandInjection(input) as OkObjectResult;
+            Assert.NotNull(result);
+            Assert.Contains(input, result.Value.ToString());
+        }
+
     }
 }

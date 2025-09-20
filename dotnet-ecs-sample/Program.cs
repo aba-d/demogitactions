@@ -1,15 +1,22 @@
-var builder = WebApplication.CreateBuilder(args);
+public partial class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        ConfigureServices(builder);
+        var app = builder.Build();
+        Configure(app);
+        app.Run();
+    }
 
-// Add services
-builder.Services.AddControllers();
+    public static void ConfigureServices(WebApplicationBuilder builder)
+    {
+        builder.Services.AddControllers();
+    }
 
-var app = builder.Build();
-
-// Map controllers
-app.MapControllers();
-
-// Add a simple health endpoint for ECS
-app.MapGet("/health", () => Results.Ok("Healthy"));
-
-// Run the app
-app.Run();
+    public static void Configure(WebApplication app)
+    {
+        app.MapControllers();
+        app.MapGet("/health", () => Results.Ok("Healthy"));
+    }
+}
