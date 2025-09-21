@@ -51,5 +51,30 @@ The workflow includes:
 - Build and push Docker image to Amazon ECR
 - Deploy to AWS ECS using task definition
 
+## 📖 Commit Message Policy
+
+To keep our codebase clean and traceable, **all commit messages must follow the Jira format**:
+
+### ✅ Format
+<Jira-Issue-Key>: <Meaningful Commit Message>
+
+### ✅ Examples
+- `JIRA-123: Fix login bug when password is empty`
+- `JIRA-456: Add validation for email field`
+
+### ❌ Invalid Examples (will be rejected)
+- `Fix login bug`
+- `update code`
+- `Jira: changes done`
+
+---
+
+## ⚙️ Git Hook Enforcement
+
+We enforce commit message rules using a **commit-msg Git hook**.
+
+- If your commit message does not include a Jira issue key and proper description, the commit will be **rejected**.  
+- This ensures developers don’t need to duplicate comments in Jira.  
+
 ## 📄 License
 This project is licensed under the MIT License.

@@ -7,6 +7,7 @@ on:
       - Feature-*
       - main
   pull_request:
+    types: [opened, edited, synchronize, reopened]
     branches:
       - main
       - Integration
@@ -20,11 +21,22 @@ permissions:
   id-token: write
 
 jobs:
+  
+  # ------------------------
+  # Commit Checks
+  # ------------------------
+  commit-check:
+    name: Commit Checks
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check.yml@main
+    with:
+      base_branch: Feature-branchProtection
+  
   # ------------------------
   # Code Scan (Codeql)
   # ------------------------
   Codeql-scan:
     name: GHAS scan
+    needs: commit-check
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
