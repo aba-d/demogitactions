@@ -109,7 +109,7 @@ jobs:
   ecs-deploy-qa:
     name: Deploy to QA
     needs: ecs-deploy-dev
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/cd/ecs-taskservice-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
       task-family: ${{ vars.TASK_FAMILY }}
