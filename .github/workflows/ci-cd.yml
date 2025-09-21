@@ -21,17 +21,22 @@ permissions:
   id-token: write
 
 jobs:
+  
+  # ------------------------
+  # Commit Checks
+  # ------------------------
   commit-check:
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit/commit-check.yml@main
+    name: Commit Checks
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check.yml@main
     with:
       base_branch: main
-
+  
   # ------------------------
   # Code Scan (Codeql)
   # ------------------------
   Codeql-scan:
     name: GHAS scan
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/scan/codeql-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
       build-mode: "autobuild"   # "none", "autobuild", or "manual"
@@ -47,7 +52,7 @@ jobs:
   Veracode-scan:
     name: Veracode SAST
     needs: Codeql-scan
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/scan/veracode-baseline-scan-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
     with:
       run-veracode-gate-check: "no"
     secrets: inherit
@@ -58,7 +63,7 @@ jobs:
   Sonarqube-scan:
     name: Test Coverage
     needs: Codeql-scan
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/scan/sonarqube-scan-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
     with:
       projectKey: 'org-testfordemo_myapp-netcore'
       organizationKey: org-testfordemo
@@ -75,7 +80,7 @@ jobs:
   ci:
     name: Build Scan and Push Image to ECR
     needs: [Sonarqube-scan, Veracode-scan]
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ci/docker-image-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
     with:
       project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       dockerfile-path: './dotnet-ecs-sample/Dockerfile'
@@ -88,7 +93,7 @@ jobs:
   ecs-deploy-dev:
     name: Deploy to Dev
     needs: ci
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/cd/ecs-taskservice-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
       task-family: ${{ vars.TASK_FAMILY }}
