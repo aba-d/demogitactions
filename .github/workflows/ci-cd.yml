@@ -21,14 +21,16 @@ permissions:
   id-token: write
 
 jobs:
+  
   # ------------------------
-  # Check the 
+  # Commit Checks
   # ------------------------
   commit-check:
     name: Commit Checks
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit/commit-check.yml@main
     with:
-        base_branch: main
+      base_branch: main
+  
   # ------------------------
   # Code Scan (Codeql)
   # ------------------------
