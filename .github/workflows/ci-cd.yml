@@ -36,6 +36,7 @@ jobs:
   # ------------------------
   Codeql-scan:
     name: GHAS scan
+    needs: commit-check
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       languages: '["csharp"]'
