@@ -25,10 +25,10 @@ jobs:
   # Check the 
   # ------------------------
   commit-check:
-  name: Commit Checks
-  uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit/commit-check.yml@main
-  with:
-      base_branch: main
+    name: Commit Checks
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit/commit-check.yml@main
+    with:
+        base_branch: main
   # ------------------------
   # Code Scan (Codeql)
   # ------------------------
