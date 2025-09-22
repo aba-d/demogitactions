@@ -21,18 +21,6 @@ permissions:
   id-token: write
 
 jobs:
-  
-  ci:
-    name: Build Scan and Push Image to ECR
-    needs: [Sonarqube-scan, Veracode-scan]
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
-    with:
-      language: 'csharp'
-      project-path: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
-      dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
-      environment: 'dev'
-      image-tag: '${{ github.sha }}'
-    secrets: inherit
   # ------------------------
   # Commit Checks
   # ------------------------
@@ -40,7 +28,7 @@ jobs:
     name: Commit Checks
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
-      base_branch: Feature-branchProtection
+      base_branch: main
   
   # ------------------------
   # Code Scan (Codeql)
@@ -87,6 +75,17 @@ jobs:
   # # ------------------------
   # # CI Stage (Build Image and Push to ECR)
   # # ------------------------
+  ci:
+    name: Build Scan and Push Image to ECR
+    needs: [Sonarqube-scan, Veracode-scan]
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
+    with:
+      language: 'csharp'
+      project-path: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
+      environment: 'dev'
+      image-tag: '${{ github.sha }}'
+    secrets: inherit
   # ci:
   #   name: Build Scan and Push Image to ECR
   #   needs: [Sonarqube-scan, Veracode-scan]
