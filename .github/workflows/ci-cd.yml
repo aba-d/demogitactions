@@ -22,6 +22,16 @@ permissions:
 
 jobs:
   
+  docker-image-deploy:
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
+    with:
+      language: 'csharp'
+      project-path: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
+      environment: 'dev'
+      image-tag: '${{ github.sha }}'
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
   # ------------------------
   # Commit Checks
   # ------------------------
