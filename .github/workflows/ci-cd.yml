@@ -92,6 +92,7 @@ jobs:
   ecs-deploy-dev:
     name: Deploy to Dev
     needs: ci
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
@@ -108,6 +109,7 @@ jobs:
   ecs-deploy-qa:
     name: Deploy to QA
     needs: ecs-deploy-dev
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
