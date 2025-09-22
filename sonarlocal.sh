@@ -32,3 +32,30 @@ dotnet test ./dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj \
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
 echo "✅ Sonar analysis complete!"
+
+# 5️⃣ Show code coverage summary locally
+COVERAGE_FILE=$(find ./coverage -type f -name "coverage.opencover.xml" | head -n 1)
+if [ -f "$COVERAGE_FILE" ]; then
+  echo "🔍 .NET Code Coverage Summary:"
+  dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.1.22
+  reportgenerator -reports:$COVERAGE_FILE -targetdir:coverage-summary -reporttypes:TextSummary
+  cat coverage-summary/Summary.txt
+else
+  echo "⚠️ No coverage report found."
+fi
+
+# 6️⃣ Fetch SonarCloud Quality Gate summary
+STATUS_JSON=$(curl -s -u "$SONAR_TOKEN:" "$SONAR_HOST/api/qualitygates/project_status?projectKey=$PROJECT_KEY")
+GATE_STATUS=$(echo "$STATUS_JSON" | jq -r '.projectStatus.status')
+FAILED_CONDITIONS=$(echo "$STATUS_JSON" | jq -r '.projectStatus.conditions[] | select(.status=="ERROR") | "\(.metricKey): \(.actualValue) (expected: \(.errorThreshold))"')
+
+echo "================== SonarCloud Quality Gate =================="
+echo "Project: $PROJECT_KEY"
+echo "Status: $GATE_STATUS"
+if [[ -n "$FAILED_CONDITIONS" ]]; then
+  echo "❌ Failed conditions:"
+  echo "$FAILED_CONDITIONS"
+else
+  echo "✅ All conditions passed!"
+fi
+echo "=============================================================="
