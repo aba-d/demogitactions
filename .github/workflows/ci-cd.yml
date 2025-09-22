@@ -30,13 +30,13 @@ jobs:
       dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
       environment: 'dev'
       image-tag: '${{ github.sha }}'
-    secrets:
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+    secrets: inherit
   # ------------------------
   # Commit Checks
   # ------------------------
   commit-check:
     name: Commit Checks
+    needs: docker-image-deploy
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
       base_branch: Feature-branchProtection
