@@ -27,7 +27,7 @@ jobs:
   # ------------------------
   commit-check:
     name: Commit Checks
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
       base_branch: Feature-branchProtection
   
@@ -37,16 +37,12 @@ jobs:
   Codeql-scan:
     name: GHAS scan
     needs: commit-check
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template-new.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
-      # languages: '["csharp"]'
-      # build-mode: "autobuild"   # "none", "autobuild", or "manual"
-      # dotnet-version: "8.0.x"
-      # run-codeql-gate-check: "no"
-      # projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
       language: 'csharp'
       projectPath: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
       buildCommand: 'dotnet publish dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release -o publishoutput'
+      run-codeql-gate-check: "no"
     secrets: inherit
   
   # ------------------------

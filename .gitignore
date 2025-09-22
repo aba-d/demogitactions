@@ -32,5 +32,6 @@ coverage/
 *.coveragexml
 coverage.cobertura.xml
 
-# SonarScanner temporary files
+# SonarScanner temporary files and SonarQube coverage summary
 .sonarqube/
+coverage-summary/
