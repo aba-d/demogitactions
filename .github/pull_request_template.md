@@ -1,4 +1,5 @@
 ## 📌 PR Title Format (required)
+
 **Format:** `JIRA-123 <type>(scope) <short description>`
 
 Examples:
@@ -18,5 +19,3 @@ _Describe what this PR does and why._
 
 ## 🔍 How to Test
 _Describe how we can test it._
-
----
