@@ -38,7 +38,9 @@
 # ENTRYPOINT ["dotnet", "dotnet-ecs-sample.dll"]
 
 # Stage 1: Runtime only (no SDK needed)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+ARG LANGUAGE_VERSION=8.0
+FROM mcr.microsoft.com/dotnet/aspnet:${LANGUAGE_VERSION} AS runtime
 WORKDIR /app
 
 # Accept build path from GitHub Action

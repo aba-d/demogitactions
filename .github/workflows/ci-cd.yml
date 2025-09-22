@@ -21,7 +21,6 @@ permissions:
   id-token: write
 
 jobs:
-  
   # ------------------------
   # Commit Checks
   # ------------------------
@@ -29,7 +28,7 @@ jobs:
     name: Commit Checks
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
-      base_branch: Feature-branchProtection
+      base_branch: main
   
   # ------------------------
   # Code Scan (Codeql)
@@ -73,18 +72,30 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  # ------------------------
-  # CI Stage (Build Image and Push to ECR)
-  # ------------------------
+  # # ------------------------
+  # # CI Stage (Build Image and Push to ECR)
+  # # ------------------------
   ci:
     name: Build Scan and Push Image to ECR
     needs: [Sonarqube-scan, Veracode-scan]
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
     with:
-      project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
-      dockerfile-path: './dotnet-ecs-sample/Dockerfile'
-      environment: dev
+      language: 'csharp'
+      project-path: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
+      language-version: '8.0' 
+      environment: 'dev'
+      image-tag: '${{ github.sha }}'
     secrets: inherit
+  # ci:
+  #   name: Build Scan and Push Image to ECR
+  #   needs: [Sonarqube-scan, Veracode-scan]
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-image-template.yml@main
+  #   with:
+  #     project-path: './dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+  #     dockerfile-path: './dotnet-ecs-sample/Dockerfile'
+  #     environment: dev
+  #   secrets: inherit
 
   # ------------------------
   # Deploy to Dev (auto) ECS Task + Service
