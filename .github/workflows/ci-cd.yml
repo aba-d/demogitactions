@@ -27,7 +27,7 @@ jobs:
   # ------------------------
   commit-check:
     name: Commit Checks
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
       base_branch: Feature-branchProtection
   
@@ -37,7 +37,7 @@ jobs:
   Codeql-scan:
     name: GHAS scan
     needs: commit-check
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template-new.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
     with:
       language: 'csharp'
       projectPath: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
