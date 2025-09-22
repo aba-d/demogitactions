@@ -37,14 +37,16 @@ jobs:
   Codeql-scan:
     name: GHAS scan
     needs: commit-check
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template-new.yml@main
     with:
-      languages: '["csharp"]'
-      build-mode: "autobuild"   # "none", "autobuild", or "manual"
-      dotnet-version: "8.0.x"
-      run-codeql-gate-check: "no"
-      projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
-      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
+      # languages: '["csharp"]'
+      # build-mode: "autobuild"   # "none", "autobuild", or "manual"
+      # dotnet-version: "8.0.x"
+      # run-codeql-gate-check: "no"
+      # projectPath: "dotnet-ecs-sample/dotnet-ecs-sample.csproj"
+      language: 'csharp'
+      projectPath: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      buildCommand: 'dotnet publish dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release -o publishoutput'
     secrets: inherit
   
   # ------------------------
