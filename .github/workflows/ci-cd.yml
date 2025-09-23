@@ -134,7 +134,7 @@ jobs:
   # # ------------------------
   ecs-deploy-qa:
     name: Deploy to QA
-    needs: ecs-deploy-dev
+    needs: ecs-deploy-dev1
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
     with:
