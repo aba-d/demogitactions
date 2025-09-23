@@ -116,7 +116,7 @@ jobs:
   #   secrets: inherit
 
   ecs-deploy-dev1:
-    eeds: ci
+    needs: ci
     name: Deploy to Dev - Single Image
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-deployment-template.yml@main
     with:
