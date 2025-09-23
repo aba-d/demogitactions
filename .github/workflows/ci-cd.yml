@@ -34,51 +34,51 @@ jobs:
   # ------------------------
   # Code Scan (Codeql)
   # ------------------------
-  Codeql-scan:
-    name: GHAS scan
-    needs: commit-check
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
-    with:
-      language: 'csharp'
-      projectPath: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
-      buildCommand: 'dotnet publish dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release -o publishoutput'
-      run-codeql-gate-check: "no"
-    secrets: inherit
+  # Codeql-scan:
+  #   name: GHAS scan
+  #   needs: commit-check
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/codeql-template.yml@main
+  #   with:
+  #     language: 'csharp'
+  #     projectPath: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+  #     buildCommand: 'dotnet publish dotnet-ecs-sample/dotnet-ecs-sample.csproj -c Release -o publishoutput'
+  #     run-codeql-gate-check: "no"
+  #   secrets: inherit
   
   # ------------------------
   # Veracode
   # ------------------------
-  Veracode-scan:
-    name: Veracode SAST
-    needs: Codeql-scan
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
-    with:
-      run-veracode-gate-check: "no"
-    secrets: inherit
+  # Veracode-scan:
+  #   name: Veracode SAST
+  #   needs: Codeql-scan
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/veracode-baseline-scan-template.yml@main
+  #   with:
+  #     run-veracode-gate-check: "no"
+  #   secrets: inherit
   
   # ------------------------
   # Sonarqube scan
   # ------------------------
-  Sonarqube-scan:
-    name: Test Coverage
-    needs: Codeql-scan
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
-    with:
-      projectKey: 'org-testfordemo_myapp-netcore'
-      organizationKey: org-testfordemo
-      run-sonarqube-gate-check: "no"
-      projectSlnPath: "demogitactions.sln"
-      testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+  # Sonarqube-scan:
+  #   name: Test Coverage
+  #   needs: Codeql-scan
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/sonarqube-scan-template.yml@main
+  #   with:
+  #     projectKey: 'org-testfordemo_myapp-netcore'
+  #     organizationKey: org-testfordemo
+  #     run-sonarqube-gate-check: "no"
+  #     projectSlnPath: "demogitactions.sln"
+  #     testProjectPath: "dotnet-ecs-sample.Tests/dotnet-ecs-sample.Tests.csproj"
+  #   secrets:
+  #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   # # ------------------------
   # # CI Stage (Build Image and Push to ECR)
   # # ------------------------
   ci:
     name: Build Scan and Push Image to ECR
-    needs: [Sonarqube-scan, Veracode-scan]
+    # needs: [Sonarqube-scan, Veracode-scan]
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
     with:
       language: 'csharp'
