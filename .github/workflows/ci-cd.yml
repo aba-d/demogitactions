@@ -29,6 +29,7 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/commit-check-template.yml@main
     with:
       base_branch: main
+      jira_prefix: "SCRUM|PROJ"
   
   # ------------------------
   # Code Scan (Codeql)
