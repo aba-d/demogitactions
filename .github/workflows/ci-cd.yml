@@ -148,7 +148,6 @@ jobs:
       extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-qa\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
     secrets: inherit
 
-
   # ------------------------
   # Notify the Jira
   # ------------------------
