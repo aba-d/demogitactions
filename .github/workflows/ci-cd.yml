@@ -127,7 +127,7 @@ jobs:
       image-tag: ${{ github.sha }}
       environment: dev
       language: csharp
-      extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
+      extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-dev\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
 
   # # ------------------------
   # # Deploy to QA (requires approval)
@@ -136,7 +136,7 @@ jobs:
     name: Deploy to QA
     needs: ecs-deploy-dev1
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-deployment-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
       task-family: ${{ vars.TASK_FAMILY }}
@@ -144,7 +144,9 @@ jobs:
       desired-count: ${{ vars.DESIRED_COUNT }}
       image-tag: ${{ github.sha }}
       environment: qa
+      extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-qa\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
     secrets: inherit
+
 
   # ------------------------
   # Notify the Jira
