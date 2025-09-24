@@ -144,6 +144,7 @@ jobs:
       desired-count: ${{ vars.DESIRED_COUNT }}
       image-tag: ${{ github.sha }}
       environment: qa
+      language: csharp
       extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-qa\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
     secrets: inherit
 
