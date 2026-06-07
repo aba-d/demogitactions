@@ -28,40 +28,38 @@ Before diving into archetypes, here is how AI agents plug into your existing too
 
 ```mermaid
 flowchart TB
-    subgraph Developer Workspace
-        VSC[VS Code + Copilot]
-        CLI[Copilot CLI]
+    subgraph DEV["👤 Developer Workspace"]
+        VSC["VS Code + Copilot<br/>agent mode"]
     end
 
-    subgraph GitHub EMU
-        GHC[Copilot Cloud Agent]
-        ISSUE[Issues and PRs]
-        REPO[Repos and Rulesets]
+    subgraph GH["GitHub EMU"]
+        GHC["Copilot Cloud Agent<br/>GitHub-hosted, autonomous"]
+        ISSUE["Issues / PRs"]
+        REPO["Repos & Rulesets"]
     end
 
-    subgraph CI/CD Layer
-        GHA[GitHub Actions]
-        SHR[Self-hosted runners on CodeBuild]
-        MCP[GitHub MCP Server]
+    subgraph CICD["⚙️ CI/CD Layer"]
+        GHA["GitHub Actions<br/>workflows"]
+        SHR["Self-hosted runners<br/>on AWS CodeBuild"]
+        MCP["GitHub MCP Server<br/>tool gateway"]
     end
 
-    subgraph Security and Identity
-        OIDC[OIDC trust - GitHub to AWS]
-        IAM[AWS IAM Roles - least-privilege]
-        VAULT[HashiCorp Vault on EC2]
-        VC[Veracode SAST / SCA]
+    subgraph SEC["🔐 Security & Identity"]
+        OIDC["OIDC trust<br/>GitHub → AWS"]
+        IAM["AWS IAM Roles<br/>least-privilege"]
+        VAULT["HashiCorp Vault<br/>on EC2"]
+        VC["Veracode<br/>SAST / SCA"]
     end
 
-    subgraph AWS Runtime
-        ECS[ECS / Fargate]
-        ECR[ECR - agent images]
-        CW[CloudWatch + X-Ray]
-        SM[Secrets Manager]
+    subgraph AWS["☁️ AWS Runtime"]
+        ECS["ECS / Fargate<br/>long-running agents"]
+        ECR["ECR<br/>agent images"]
+        CW["CloudWatch + X-Ray<br/>observability"]
+        SM["Secrets Manager<br/>KMS"]
     end
 
     VSC -->|copilot in chat| GHC
     VSC -->|edit code| REPO
-    CLI -->|gh copilot| GHC
 
     ISSUE -->|copilot assigned| GHC
     GHC -->|opens PR| REPO
@@ -69,8 +67,7 @@ flowchart TB
 
     REPO -->|push / PR| GHA
     GHA -->|runs on| SHR
-    GHA -->|assume role via| OIDC
-    OIDC --> IAM
+    GHA -->|assume role via| OIDC --> IAM
     GHA -->|reads secrets| VAULT
     GHA -->|scans| VC
 
