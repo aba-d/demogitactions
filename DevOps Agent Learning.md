@@ -28,30 +28,30 @@ Before diving into archetypes, here is how AI agents plug into your existing too
 
 ```mermaid
 flowchart TB
-    subgraph DEV["Developer Workspace"]
+    subgraph DEV["👤 Developer Workspace"]
         VSC["VS Code + Copilot<br/>agent mode"]
     end
 
-    subgraph GH["GitHub EMU"]
+    subgraph GH["🐙 GitHub EMU"]
         GHC["Copilot Cloud Agent<br/>GitHub-hosted, autonomous"]
         ISSUE["Issues / PRs"]
         REPO["Repos & Rulesets"]
     end
 
-    subgraph CICD["CI/CD Layer"]
+    subgraph CICD["⚙️ CI/CD Layer"]
         GHA["GitHub Actions<br/>workflows"]
         SHR["Self-hosted runners<br/>on AWS CodeBuild"]
         MCP["GitHub MCP Server<br/>tool gateway"]
     end
 
-    subgraph SEC["Security & Identity"]
+    subgraph SEC["🔐 Security & Identity"]
         OIDC["OIDC trust<br/>GitHub → AWS"]
         IAM["AWS IAM Roles<br/>least-privilege"]
         VAULT["HashiCorp Vault<br/>on EC2"]
         VC["Veracode<br/>SAST / SCA"]
     end
 
-    subgraph AWS["AWS Runtime"]
+    subgraph AWS["☁️ AWS Runtime"]
         ECS["ECS / Fargate<br/>long-running agents"]
         ECR["ECR<br/>agent images"]
         CW["CloudWatch + X-Ray<br/>observability"]
@@ -391,6 +391,294 @@ flowchart LR
     AGENT --> OUT3[Escalation issue<br/>for SEV-1]
 ```
 
+#### Before you start — Prerequisites for our stack
+
+Before writing any code, four constraints unique to your environment must be addressed. **Skipping any of these will cause the pilot to fail.**
+
+##### Prerequisite 1 — Model selection
+
+You do NOT specify a Claude API model ID like `claude-sonnet-4-5`. Copilot routes through its own model gateway. You pick a Copilot-supported model from a fixed list:
+
+| Model | When to use | Premium request multiplier |
+|---|---|---|
+| **Claude Sonnet 4.6** ✅ | **Recommended default** — best agentic coding, lowest cost | 1× |
+| Claude Sonnet 4.5 | Fallback if 4.6 unavailable | 1× |
+| Claude Opus 4.6 | Complex multi-file refactors only | 10× (expensive!) |
+| Claude Haiku 4.5 | Simple triage / classification | 0.33× |
+| GPT-5 | If you prefer OpenAI for some agents | varies |
+
+> ⚠️ **Admin gate.** Your Copilot Business/Enterprise admin must explicitly enable the Claude model policy in **Organization settings → Copilot → Policies**. Until that's done, developers will not see Claude in the model picker — they'll only see GPT models. Multipliers and model availability change frequently; always check [GitHub's current model catalog](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing) before pinning a model.
+
+Set the model in the custom agent frontmatter:
+
+```yaml
+---
+name: veracode-triage
+model: claude-sonnet-4-6   # ← use the Copilot model ID, not an Anthropic API name
+---
+```
+
+##### Prerequisite 2 — Cost model and budget controls
+
+GitHub moved to **usage-based billing on June 1, 2026.** This changes how you plan and govern costs:
+
+```mermaid
+flowchart TD
+    SUB[Copilot Business/Enterprise<br/>subscription per seat] --> ALLOW[Included monthly<br/>GitHub AI Credits allowance]
+    ALLOW -->|consumed by| FEAT[Chat · Cloud Agent ·<br/>Code Review · MCP calls]
+    FEAT -->|each session| TOK[Tokens billed<br/>input + output + cached]
+    TOK -->|+| MIN[GitHub Actions minutes<br/>for the sandbox runner]
+    ALLOW -->|exhausted?| BUDGET{Paid usage<br/>enabled?}
+    BUDGET -->|No| BLOCK[Agent blocks until<br/>next billing cycle]
+    BUDGET -->|Yes| OVER[Overage billed at<br/>published API rates]
+```
+
+What this means for our pilot:
+
+| Cost component | Where it shows up | How to control |
+|---|---|---|
+| Token consumption | "GitHub AI Credits" SKU | Set monthly budget in Org → Billing → Budgets |
+| Actions minutes | "Actions" line on bill | Limit `copilot-setup-steps.yml` runtime; use self-hosted (you are) |
+| Cloud Agent session | Dedicated SKU since Nov 2025 | One session per `@copilot` mention / issue assignment |
+| MCP server calls | Free from your side (your Veracode MCP runs in your VPC) | Standard ECS / VPC cost |
+
+**Hard rules for our pilot:**
+
+1. **Set a $200/month budget** on the dedicated Cloud Agent SKU before enabling anyone
+2. **Do NOT enable "AI Credits paid usage" policy** until pilot ends — agent blocks at allowance limit, no surprise overages
+3. **Restrict Cloud Agent to one repo** initially; multiplier blows up fast if every repo can invoke it
+4. **Pick Sonnet 4.6 (1× multiplier)** — Opus 4.6's 10× multiplier turns a $200 budget into 20 sessions
+
+##### Prerequisite 3 — Runner architecture decision (CodeBuild vs ARC vs GitHub-hosted)
+
+This is the **single most important architectural decision** for the pilot. Your current AWS CodeBuild self-hosted runner setup is **not the same as ARC-managed runners** — and Copilot Cloud Agent only officially supports ARC.
+
+###### The distinction explained
+
+**ARC (Actions Runner Controller)** is a Kubernetes operator that runs self-hosted runners as ephemeral pods on EKS. **AWS CodeBuild as a self-hosted runner** is a different architecture entirely — CodeBuild dynamically creates a runner per job at the AWS service level, not at the pod level.
+
+```mermaid
+flowchart TD
+    subgraph CURRENT["Your current setup — CodeBuild native integration"]
+        direction TB
+        WF1["GitHub Actions workflow<br/>runs-on: codebuild-project-name"] --> CBP[CodeBuild project<br/>AWS-managed compute]
+        CBP --> CBC[CodeBuild container<br/>runs the runner agent]
+        CBC --> JOB1[Job executes,<br/>container destroyed]
+    end
+
+    subgraph ARCNEW["What Copilot agent needs — ARC scale sets"]
+        direction TB
+        WF2["GitHub Actions workflow<br/>runs-on: arc-scale-set-name"] --> ARCC[ARC controller<br/>Kubernetes operator on EKS]
+        ARCC --> POD[Runner pod ephemeral<br/>one pod per job]
+        POD --> JOB2[Job executes,<br/>pod garbage-collected]
+    end
+```
+
+GitHub's official position:
+
+> "ARC is the only officially supported solution for self-hosting Copilot Cloud Agent. For security reasons, we do not recommend using non-ARC self-hosted runners."
+
+This is about isolation guarantees — Kubernetes pod-level ephemerality, network policies, and per-job security boundaries that Copilot's risk model depends on.
+
+###### How to check which one you have
+
+Look at your `runs-on:` field in `.github/workflows/*.yml`:
+
+| You see this label | You're using |
+|---|---|
+| `runs-on: codebuild-my-project-...` or similar | AWS CodeBuild native integration — **NOT ARC** |
+| `runs-on: arc-runner-set` or similar (pointing to a Kubernetes scale set) | ARC on EKS — **ARC-managed** ✓ |
+| `runs-on: ubuntu-latest` / `windows-latest` | GitHub-hosted runners |
+
+For our pilot, you almost certainly fall into the first row. **That's the problem we need to solve.**
+
+###### Three paths forward
+
+```mermaid
+flowchart TB
+    DECIDE([How will the Copilot agent run?])
+
+    DECIDE --> P1[Path 1<br/>ARC alongside CodeBuild]
+    DECIDE --> P2[Path 2<br/>Replace CodeBuild with ARC]
+    DECIDE --> P3[Path 3<br/>GitHub-hosted + public MCP gateway]
+
+    P1 --> P1D[Effort: 1–2 weeks<br/>Risk: medium<br/>Touches: new EKS cluster]
+    P2 --> P2D[Effort: weeks to months<br/>Risk: high<br/>Touches: ALL CI/CD]
+    P3 --> P3D[Effort: 2–3 days<br/>Risk: low<br/>Touches: only the MCP gateway]
+```
+
+###### Path 1 — Stand up ARC alongside existing CodeBuild
+
+Keep your CodeBuild runners for all current CI/CD jobs. Add a **new, minimal EKS cluster** (or use an existing one) running ARC scale sets, dedicated to Copilot agent workloads only.
+
+```mermaid
+flowchart LR
+    GH[GitHub Actions]
+    GH -->|"runs-on:<br/>codebuild-*"| CB[CodeBuild runners<br/>existing CI/CD]
+    GH -->|"runs-on:<br/>arc-copilot"| ARC[ARC scale set<br/>on EKS<br/>Copilot agent only]
+    CB --> VPC[Your AWS VPC]
+    ARC --> VPC
+    VPC --> ECS[Veracode MCP<br/>on ECS Fargate]
+    VPC --> VAULT[Vault on EC2]
+```
+
+**Pros:**
+- Production-grade, GitHub-officially-supported
+- Internal services (Veracode MCP, Vault) stay VPC-internal
+- Existing CodeBuild CI/CD untouched
+
+**Cons:**
+- New EKS cluster = new platform-engineering surface to manage
+- Requires Helm install of ARC controller + scale set configuration
+- 1–2 weeks of platform work before you can pilot
+
+###### Path 2 — Migrate everything to ARC
+
+Replace CodeBuild with ARC for all workloads.
+
+**Skip this option.** You'd be rebuilding your entire CI/CD runner infrastructure to enable one feature pilot. The risk/reward is wrong for now. Revisit only if your enterprise has independently decided to standardize on ARC for reasons beyond Copilot.
+
+###### Path 3 — GitHub-hosted runners + public MCP gateway ✅ recommended for pilot
+
+Let Copilot Cloud Agent run on GitHub-hosted runners (the default — no infrastructure work needed). Expose your Veracode MCP server via a **hardened public endpoint** protected by mTLS or OIDC-validated tokens. Keep Veracode API credentials inside your VPC.
+
+```mermaid
+flowchart LR
+    subgraph GHE["GitHub infrastructure"]
+        CCA[Copilot Cloud Agent<br/>+ GitHub-hosted runner]
+    end
+
+    subgraph EDGE["DMZ / Public endpoint"]
+        GW[MCP gateway<br/>mTLS or OIDC-gated<br/>on ALB or API Gateway]
+    end
+
+    subgraph VPC["Your AWS VPC private"]
+        MCP[Veracode MCP server<br/>ECS Fargate]
+        VAULT[Vault on EC2<br/>holds Veracode creds]
+        MCP --> VAULT
+    end
+
+    CCA -->|"mTLS over public<br/>internet"| GW
+    GW -->|"VPC-internal,<br/>private subnet"| MCP
+```
+
+**Pros:**
+- **No infrastructure work** — Copilot agent uses GitHub-hosted runners by default
+- 2–3 days to set up the public MCP gateway
+- Validates the *value* hypothesis before investing in platform
+- Veracode credentials never leave your VPC (stay in Vault)
+- Easy to disable — just turn off the public gateway
+
+**Cons:**
+- One internet-exposed service (the MCP gateway) — must be properly hardened
+- mTLS / OIDC-token validation is non-trivial to implement correctly
+- Slightly higher cost (GitHub-hosted runner minutes consumed)
+
+###### Pilot recommendation
+
+```mermaid
+flowchart LR
+    NOW[Now — Pilot<br/>Path 3] -->|2–3 days setup| LEARN[Run for 2–4 weeks<br/>measure value]
+    LEARN -->|"agent useful?"| DECIDE2{Decision}
+    DECIDE2 -->|"Yes — expand"| LATER[Production — Path 1<br/>ARC on EKS]
+    DECIDE2 -->|"No — limited value"| OFF[Disable<br/>public gateway]
+
+    LATER --> MOVE[Move MCP back to<br/>VPC-internal only]
+```
+
+**Why pilot on Path 3:**
+
+1. **Fast feedback loop.** The pilot's question is "does this agent provide useful security triage?" — not "can we operate ARC?" Don't conflate them.
+2. **Lowest commitment cost.** If the agent isn't useful, you've spent 3 days on a gateway you can switch off — not 2 weeks on an EKS cluster.
+3. **No surprise architectural debt.** If ARC pilot fails, you've still got a new EKS cluster to maintain or decommission.
+
+Once value is proven (clear evidence the agent reduces triage time and developers act on its comments), invest in Path 1 for the production rollout.
+
+###### Path 3 setup checklist for the pilot
+
+| Step | Owner | Effort |
+|---|---|---|
+| Deploy Veracode MCP server on ECS Fargate in private subnet | Platform | 1 day |
+| Stand up ALB or API Gateway in public subnet with TLS cert | Platform | 0.5 day |
+| Configure mTLS (or OIDC token validation via Lambda authorizer) | Security | 1 day |
+| Register the MCP gateway in your org's Copilot MCP config | Copilot admin | 0.5 day |
+| Smoke test from a GitHub-hosted runner using `curl` | DevOps | 0.5 day |
+
+**Required mTLS approach (recommended):**
+- Generate client certificates for each org that's allowed to call the MCP
+- ALB performs mTLS termination
+- Client cert CN is logged for audit
+
+**Alternative OIDC approach (if mTLS is operationally heavy for you):**
+- Lambda authorizer validates a GitHub OIDC token in the Authorization header
+- Verify the token's `sub` claim matches your specific GitHub org and Copilot Cloud Agent runtime
+- Reject all other callers
+
+###### What to revisit when moving to Path 1 (production)
+
+When you're ready to invest in ARC on EKS:
+
+| Item | Path 3 → Path 1 change |
+|---|---|
+| MCP gateway exposure | Move from public → VPC-internal only |
+| TLS strategy | mTLS becomes internal-only (still required for defence-in-depth) |
+| Runner cost | Pay for EKS cluster + nodes instead of GitHub-hosted minutes |
+| Network egress | Use VPC NAT + endpoint policies instead of GitHub's outbound |
+| `runs-on:` label | Change from default to `arc-copilot-scale-set` |
+
+##### Prerequisite 4 — Where each component runs (Path 3 pilot architecture)
+
+Based on the Path 3 recommendation, here is the actual deployment topology for the pilot:
+
+```mermaid
+flowchart TB
+    subgraph GH_HOSTED["GitHub-hosted (you do NOT run these)"]
+        LLM[LLM inference<br/>Claude Sonnet 4.6<br/>via api.githubcopilot.com]
+        SAND[Agent sandbox runner<br/>GitHub-hosted, ephemeral]
+        REG[Agent definition<br/>+ session orchestration]
+    end
+
+    subgraph EDGE["DMZ — internet-facing"]
+        GW[MCP gateway<br/>ALB + mTLS termination]
+    end
+
+    subgraph VPC["Your AWS VPC — private subnets"]
+        ECS[Veracode MCP server<br/>ECS Fargate]
+        EC2[Vault on EC2<br/>existing]
+    end
+
+    subgraph THIRD_PARTY["Third-party (you authenticate to)"]
+        VAPI[Veracode REST API]
+    end
+
+    SAND -->|"mTLS HTTPS<br/>over public internet"| GW
+    GW -->|"private VPC routing"| ECS
+    ECS -->|"VPC-internal"| EC2
+    ECS -->|REST API calls| VAPI
+    LLM -.->|via Copilot routing| SAND
+```
+
+**Component ownership summary (Path 3 pilot):**
+
+| Component | Runs where | Who manages |
+|---|---|---|
+| LLM (Claude Sonnet 4.6) | GitHub's infrastructure | GitHub — you only configure access policy |
+| Custom agent definition | `.github/agents/` in your repo | You — version-controlled like code |
+| Agent sandbox runtime | **GitHub-hosted runner (default)** | GitHub — no infra work needed for pilot |
+| MCP gateway (mTLS termination) | **ALB in DMZ subnet** | You — new component, ~0.5 day to set up |
+| Veracode MCP server | ECS Fargate in private subnet | You — new component, ~1 day to build |
+| Vault | EC2 in your VPC | You — existing |
+| Veracode REST API | Veracode SaaS | Veracode — you have API credentials |
+
+**What's NOT in this diagram (deferred to Path 1 production):**
+- ARC controller on EKS
+- CodeBuild scale set integration with Copilot
+- VPC-internal-only MCP (the gateway becomes private)
+
+> **The single moving piece for the pilot** is the public MCP gateway. Everything else either already exists (Vault, your AWS account) or is GitHub-hosted (LLM, runner). This is why Path 3 has a 2–3 day setup — there's only one new internet-facing component to harden.
+
+---
+
 #### Step 1 — Define the custom agent
 
 Create the file `.github/agents/veracode-triage.md` in your repo:
@@ -402,7 +690,7 @@ description: Triages Veracode SAST and SCA findings on PRs. Posts review comment
 tools:
   - github
   - veracode
-model: claude-sonnet-4-5
+model: claude-sonnet-4-6
 ---
 
 # Veracode Triage Agent
@@ -502,20 +790,47 @@ The agent needs a way to call the Veracode API. We do this via an **MCP server**
 >
 > Either way, the MCP server runs in *your* infrastructure (on ECS Fargate) so Veracode credentials never leave your environment — the agent just calls your gateway.
 
-#### Step 3 — Restrict the agent's network egress
+#### Step 3 — Harden the public MCP gateway (Path 3 pilot)
 
-By default Copilot Cloud Agent can call any HTTPS endpoint. For a security agent, lock this down using the [agent firewall](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-firewall). Edit your org's Copilot policy to add an egress allow-list:
+For our Path 3 pilot, the agent runs on GitHub-hosted runners — they reach your Veracode MCP server through a **public mTLS-protected ALB**. The MCP gateway is the only new internet-facing component, so it's where you focus security controls.
 
-```yaml
-# In GitHub.com → Organization settings → Copilot → Coding agent
-allowed_endpoints:
-  - api.github.com                              # GitHub MCP
-  - your-internal-mcp-gateway.company.com       # Your Veracode MCP
-  - api.anthropic.com                           # Model provider
-# Block everything else
+```mermaid
+flowchart LR
+    AGENT["GitHub-hosted runner<br/>Copilot agent session"]
+    ALB["ALB with TLS<br/>+ mTLS termination"]
+    AUTH["Lambda authorizer<br/>or WAF rules"]
+    MCP["Veracode MCP server<br/>ECS Fargate, private subnet"]
+    VAULT["Vault on EC2"]
+    LOG["VPC Flow Logs +<br/>ALB access logs → SIEM"]
+
+    AGENT -->|"mTLS client cert<br/>+ Bearer token"| ALB
+    ALB --> AUTH
+    AUTH -->|"valid → forward"| MCP
+    AUTH -->|"invalid → 403"| BLOCK[blocked]
+    MCP -->|"VPC-internal"| VAULT
+    ALB -.->|"all requests"| LOG
 ```
 
-This means even if the agent is prompt-injected to exfiltrate data, it cannot reach an attacker-controlled endpoint.
+**Concrete controls to implement on the MCP gateway:**
+
+| Control | What it does | How |
+|---|---|---|
+| **mTLS termination** | Requires GitHub agent to present a client certificate signed by your private CA | ALB listener with `mutualAuthentication: { mode: "verify" }` and trust store containing your CA |
+| **OIDC token validation** (defence-in-depth) | Second factor — token must include valid GitHub OIDC `sub` claim binding to your org | Lambda authorizer attached to ALB, verifies `iss=https://token.actions.githubusercontent.com` |
+| **IP allow-list** (optional) | Restrict to GitHub Actions runner IP ranges | WAF rule referencing GitHub's published IP list (rotated regularly) |
+| **Rate limiting** | Cap requests per minute per client cert | WAF rate-based rule (e.g., 100 req/min) |
+| **ALB access logs to SIEM** | Audit every request | Enable ALB access logs to S3, ship to SIEM via Kinesis Firehose |
+| **No public IP on the MCP server itself** | The MCP server sits in a private subnet — only the ALB is internet-facing | Standard VPC design |
+
+**Turn off the Copilot agent firewall.** For Path 3 pilot on GitHub-hosted runners, the agent's built-in firewall can stay ON (it's compatible with GitHub-hosted runners) — but you need to add your MCP gateway domain to the allowed-endpoints list so the agent can call it:
+
+```
+Repo → Settings → Copilot → Coding agent → Firewall:
+  Allowed domains:
+    - your-mcp-gateway.company.com
+```
+
+> **Compare with Path 1 production:** When you migrate to ARC on EKS, the built-in firewall becomes incompatible and you replace it with VPC NAT + Network Firewall egress controls. The MCP gateway also moves from public to VPC-internal-only. For now, Path 3 trades infrastructure complexity for one well-hardened public endpoint.
 
 #### Step 4 — Add a pre-tool-use hook for governance
 
@@ -607,6 +922,8 @@ For others, post a comment with: CWE, file:line, suggested remediation, and risk
 
 **In CI/CD — every PR triggers a security review:**
 
+> **Note on runner choice:** The workflow below runs the *Veracode scan* on your existing CodeBuild runners (because Veracode scanning needs the built JAR file and Vault access). The `@veracode-triage` agent itself runs separately on GitHub-hosted runners (Path 3 pilot). The two are independent — the workflow just kicks off the scan and asks the agent to triage the results.
+
 ```yaml
 # .github/workflows/pr-security-review.yml
 name: Security agent PR review
@@ -623,7 +940,7 @@ permissions:
 
 jobs:
   veracode-scan:
-    runs-on: [self-hosted, codebuild]
+    runs-on: [self-hosted, codebuild]   # Veracode scan on your CodeBuild runners
     steps:
       - uses: actions/checkout@v4
 
