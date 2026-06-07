@@ -28,7 +28,7 @@ Before diving into archetypes, here is how AI agents plug into your existing too
 
 ```mermaid
 flowchart TB
-    subgraph DEV["👤 Developer Workspace"]
+    subgraph DEV["Developer Workspace"]
         VSC["VS Code + Copilot<br/>agent mode"]
     end
 
@@ -38,20 +38,20 @@ flowchart TB
         REPO["Repos & Rulesets"]
     end
 
-    subgraph CICD["⚙️ CI/CD Layer"]
+    subgraph CICD["CI/CD Layer"]
         GHA["GitHub Actions<br/>workflows"]
         SHR["Self-hosted runners<br/>on AWS CodeBuild"]
         MCP["GitHub MCP Server<br/>tool gateway"]
     end
 
-    subgraph SEC["🔐 Security & Identity"]
+    subgraph SEC["Security & Identity"]
         OIDC["OIDC trust<br/>GitHub → AWS"]
         IAM["AWS IAM Roles<br/>least-privilege"]
         VAULT["HashiCorp Vault<br/>on EC2"]
         VC["Veracode<br/>SAST / SCA"]
     end
 
-    subgraph AWS["☁️ AWS Runtime"]
+    subgraph AWS["AWS Runtime"]
         ECS["ECS / Fargate<br/>long-running agents"]
         ECR["ECR<br/>agent images"]
         CW["CloudWatch + X-Ray<br/>observability"]
@@ -94,6 +94,58 @@ flowchart LR
 ```
 
 Each agent has a specific spot in the value stream. They communicate through GitHub Issues, PRs, and webhook events — using infrastructure you already have.
+
+---
+
+## Build vs Configure vs Custom Agent — Pick the Right Approach
+
+Before you read each agent section, a critical decision: **for most of these agents, you are NOT writing new agent code.** You are configuring the existing **GitHub Copilot Cloud Agent** with your specific context. Here are the three options:
+
+### The three approaches
+
+| Approach | What you do | When to use it | Effort |
+|---|---|---|---|
+| **A. Base agent + custom instructions** | Drop a `.github/copilot-instructions.md` file. `@copilot` now behaves as your specialist. | Single use case per repo. Fastest path to value. | Hours |
+| **B. Custom agent** | Define a named agent in `.github/agents/<name>.md`. Invoked via `@agent-name`. | Multiple specialist agents in same repo (security, infra, docs). | A day |
+| **C. Build separately** | Write code (Python/TS), deploy to ECS Fargate. Triggered by webhooks. | Work that isn't code-centric: webhooks, scheduled scans, long-running watchers. | Days–weeks |
+
+### Decisive question
+
+> *"Does this work happen in repos and produce code, PRs, or comments?"*
+
+- **Yes** → Use Copilot Cloud Agent (Approach A or B). Don't reinvent.
+- **No** (it watches webhooks, queries cloud APIs, generates reports) → Build separately (Approach C).
+
+### Per-agent recommendation
+
+```mermaid
+flowchart LR
+    subgraph A["Approach A — Custom instructions"]
+        A1[CI/CD agent]
+    end
+
+    subgraph B["Approach B — Custom agent"]
+        B1[Security agent]
+        B2[Infrastructure agent]
+    end
+
+    subgraph C["Approach C — Build on ECS"]
+        C1[Incident response agent]
+        C2[Deployment agent]
+        C3[Compliance agent]
+    end
+```
+
+| Agent | Approach | Reason |
+|---|---|---|
+| CI/CD agent | **A** | Single role, code-centric, repo-scoped |
+| Security agent | **B** | Multiple specialists needed (Veracode, secret scanning, SCA) |
+| Incident response | **C** | Webhook-driven, queries CloudWatch, posts to Slack — not code-centric |
+| Infrastructure | **B** | Terraform-specialist with plan-only tool restrictions |
+| Deployment | **C** | Too sensitive for autonomous Cloud Agent; orchestrated by Actions with HITL |
+| Compliance | **C** | Long-running scheduled scans on read-only data sources |
+
+> **For your first agent** — start with the Security Agent (Approach B). It is the highest-value, lowest-risk path. The walkthrough is in [section 2 below](#how-to-create-one-walkthrough-our-first-custom-agent).
 
 ---
 
@@ -286,20 +338,20 @@ jobs:
 
 ```mermaid
 flowchart LR
-    subgraph Finding sources
-        VC[Veracode SAST/SCA]
+    subgraph SRC["Finding sources"]
+        VC["Veracode SAST/SCA"]
         GHAS[GitHub Code Scanning]
         SS[Secret Scanning]
         DEP[Dependabot]
     end
 
-    subgraph Security Agent on ECS Fargate
-        TRIAGE[Triage logic - ReAct loop]
-        HOOKS[Pre/post-tool hooks - policy enforcement]
+    subgraph AGENT["Security Agent<br/>on ECS Fargate"]
+        TRIAGE["Triage logic<br/>ReAct loop"]
+        HOOKS["Pre/post-tool hooks<br/>policy enforcement"]
         TRIAGE -.-> HOOKS
     end
 
-    subgraph MCP tool layer
+    subgraph TOOLS["MCP tool layer"]
         T1[get_veracode_findings]
         T2[get_github_alerts]
         T3[read_file]
@@ -307,23 +359,248 @@ flowchart LR
         T5[dismiss_with_justification]
     end
 
-    subgraph Actions
+    subgraph OUTCOMES["Actions"]
         PR[PR with fix]
-        COMMENT[PR comment with risk note]
-        DISMISS[Justified dismissal - logged to audit]
-        ALERT[Slack alert for SEV-1]
+        COMMENT["PR comment<br/>with risk note"]
+        DISMISS["Justified dismissal<br/>logged to audit"]
+        ALERT["Slack alert<br/>for SEV-1"]
     end
 
     SRC --> AGENT --> TOOLS --> OUTCOMES
     HOOKS -.->|blocks unsafe call| DISMISS
 ```
 
+### How to Create One — Walkthrough: Our First Custom Agent
+
+This is Approach B from the [Build vs Configure vs Custom Agent](#build-vs-configure-vs-custom-agent--pick-the-right-approach) section. We're going to create a named custom agent called **`veracode-triage`** that specializes in triaging Veracode findings on PRs.
+
+#### What you'll end up with
+
+```mermaid
+flowchart LR
+    PR([Developer opens PR]) --> WF[Actions workflow<br/>runs Veracode scan]
+    WF --> ART[SARIF artifact<br/>uploaded to PR]
+    WF -->|"@veracode-triage<br/>please review"| AGENT[Custom agent<br/>veracode-triage]
+
+    AGENT -->|reads| MCP[MCP servers]
+    MCP --> VC[Veracode MCP<br/>finding details]
+    MCP --> GHM[GitHub MCP<br/>PR diff + files]
+
+    AGENT --> OUT1[PR review comments<br/>per finding]
+    AGENT --> OUT2[Fix PR if<br/>auto-fixable]
+    AGENT --> OUT3[Escalation issue<br/>for SEV-1]
+```
+
+#### Step 1 — Define the custom agent
+
+Create the file `.github/agents/veracode-triage.md` in your repo:
+
+```markdown
+---
+name: veracode-triage
+description: Triages Veracode SAST and SCA findings on PRs. Posts review comments with CWE-prioritized remediation guidance and opens fix PRs for low-risk findings.
+tools:
+  - github
+  - veracode
+model: claude-sonnet-4-5
+---
+
+# Veracode Triage Agent
+
+You are a security specialist focused exclusively on triaging Veracode findings.
+You do NOT review code for general quality, style, or architecture — only security.
+
+## Inputs available to you
+
+- The current PR diff (via GitHub MCP)
+- The Veracode scan results attached as `pipeline-scan-results.json` artifact
+- Repository files referenced by findings (via GitHub MCP)
+- Historical findings on this repo (via Veracode MCP `get_application_findings`)
+
+## Your task
+
+For each Veracode finding with severity MEDIUM or higher, do the following:
+
+1. **Verify it is a true positive.**
+   - Read the affected code (`file:line` from finding)
+   - Cross-reference with the PR diff to confirm the new code introduces the issue
+   - If you cannot confirm — post a comment asking for clarification rather than guessing
+
+2. **Classify it.**
+   - Map to CWE (the finding includes this)
+   - Prioritization order: CWE-119/787 (memory safety) > CWE-89/79 (injection) > CWE-287/863 (auth) > others
+   - For SCA findings: check `transitive: false` first; transitive dependencies are usually lower priority
+
+3. **Post a review comment** in this exact format:
+
+   ```
+   **[CWE-XXX] SEVERITY** — Brief finding name
+
+   **Where:** `path/to/file.java:42`
+
+   **What:** One-sentence explanation of the vulnerability.
+
+   **Fix:** Concrete code change (use a fenced code block).
+
+   **Reference:** Link to Veracode finding ID.
+   ```
+
+4. **If the fix is < 30 lines AND well-understood**, also open a PR with the fix branched from this PR's branch.
+
+5. **For any CRITICAL finding**, additionally open an issue with:
+   - Label: `security-critical`
+   - Assignee: `@security-team`
+   - Title prefix: `[SEV-1]`
+   - Do NOT proceed with auto-fixing; humans must review first.
+
+## Hard constraints
+
+- **NEVER dismiss a finding as a false positive.** Only humans can dismiss. If you believe a finding is a false positive, post a comment explaining your reasoning and tag `@security-team`.
+- **NEVER modify `.github/workflows/` files** as part of a fix.
+- **NEVER touch files in `vendor/` or `node_modules/`** — these are vendored dependencies; address them via dependency updates instead.
+- **Always cite the exact Veracode finding ID** in every comment for traceability.
+- **One comment per finding.** Do not batch multiple findings into a single comment.
+
+## Conventions for our stack
+
+- Java 17 + Spring Boot 3.x
+- Use parameterized queries via Spring `JdbcTemplate` for any SQL fixes
+- Use `org.owasp.encoder.Encode` for output encoding fixes
+- Secrets in code → always direct to Vault: `vault.read("secret/data/<service>/...")`
+- Never suggest disabling a Veracode policy as a fix
+```
+
+The frontmatter (between `---`) tells GitHub how the agent is registered. The body becomes the agent's system prompt.
+
+#### Step 2 — Configure the Veracode MCP server
+
+The agent needs a way to call the Veracode API. We do this via an **MCP server**. Create the org-level MCP config at `.github/copilot/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "veracode": {
+      "type": "http",
+      "url": "https://your-internal-mcp-gateway.company.com/veracode/mcp",
+      "headers": {
+        "Authorization": "Bearer ${VERACODE_MCP_TOKEN}"
+      },
+      "tools": [
+        "get_application_findings",
+        "get_finding_details",
+        "get_sandbox_scan_results"
+      ]
+    }
+  }
+}
+```
+
+> **Note on the Veracode MCP server itself:** as of this writing, Veracode does not publish an official MCP server. You have two options:
+>
+> 1. **Run a community MCP server** — wraps the Veracode REST API. Examples exist on GitHub; deploy on AKS/ECS behind your network.
+> 2. **Build a thin one yourself** — ~200 lines of Python using the `fastmcp` library wrapping `requests` calls to the Veracode REST API. The official Veracode REST API docs are at `https://docs.veracode.com/r/c_rest_landing`.
+>
+> Either way, the MCP server runs in *your* infrastructure (on ECS Fargate) so Veracode credentials never leave your environment — the agent just calls your gateway.
+
+#### Step 3 — Restrict the agent's network egress
+
+By default Copilot Cloud Agent can call any HTTPS endpoint. For a security agent, lock this down using the [agent firewall](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-firewall). Edit your org's Copilot policy to add an egress allow-list:
+
+```yaml
+# In GitHub.com → Organization settings → Copilot → Coding agent
+allowed_endpoints:
+  - api.github.com                              # GitHub MCP
+  - your-internal-mcp-gateway.company.com       # Your Veracode MCP
+  - api.anthropic.com                           # Model provider
+# Block everything else
+```
+
+This means even if the agent is prompt-injected to exfiltrate data, it cannot reach an attacker-controlled endpoint.
+
+#### Step 4 — Add a pre-tool-use hook for governance
+
+We don't want the agent dismissing findings autonomously, even if our system prompt says so. Belt-and-braces: add a [pre-tool-use hook](https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-hooks) that blocks any call to a `dismiss_*` tool:
+
+```yaml
+# .github/copilot/hooks.yml
+hooks:
+  pre_tool_use:
+    - name: block-dismissals
+      match:
+        tool_name: ".*dismiss.*"
+      action: deny
+      message: |
+        Dismissing security findings is not permitted for autonomous agents.
+        Post a comment with your reasoning and tag @security-team instead.
+```
+
+The hook fires before any tool call matching the pattern. The agent receives the `deny` response and must adapt — exactly the kind of guardrail you want for high-risk agents.
+
+#### Step 5 — Update the workflow to invoke the named agent
+
+This replaces the generic `@copilot` mention with our specialized agent:
+
+```yaml
+# .github/workflows/pr-security-review.yml — invoke step only
+- name: Assign findings to veracode-triage agent
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    gh pr comment ${{ github.event.pull_request.number }} \
+      --body "@veracode-triage please review the Veracode findings in the latest scan.
+      The SARIF report is attached as workflow artifact 'pipeline-scan-results.json'
+      (run ID: ${{ github.run_id }})."
+```
+
+#### Step 6 — Verify it works
+
+A simple smoke test before deploying to all repos:
+
+1. Open a PR with a deliberate vulnerability (e.g., a `String.format("SELECT * FROM users WHERE id = " + userId)` snippet)
+2. The PR workflow runs Veracode scan → posts the comment invoking `@veracode-triage`
+3. Within ~3 minutes, the agent should post a review comment with the SQL injection finding and a parameterized-query fix
+4. Verify in the GitHub audit log under `copilot.session_started` events that the agent was invoked correctly
+
+#### Step 7 — Roll out and monitor
+
+Once it works in one repo, promote the agent definition to the **org level** so all repos can use it:
+
+```bash
+# Move from repo-level to org-level
+gh api -X PUT /orgs/YOUR-ORG/copilot/agents/veracode-triage \
+  --input .github/agents/veracode-triage.md
+```
+
+Then monitor:
+
+```mermaid
+flowchart LR
+    LOG[Copilot audit log<br/>copilot.* events] --> SIEM
+    AGENT[veracode-triage<br/>agent runs] --> METRICS[Metrics:<br/>findings triaged · time to comment · false positive rate]
+    METRICS --> DASH[Grafana dashboard]
+    SIEM --> ALERT[Alert on:<br/>dismissals attempted · firewall denials · cost spikes]
+```
+
+#### What you'll learn from this first agent
+
+Three things worth instrumenting from day one:
+
+| Metric | Why it matters |
+|---|---|
+| **Triage latency** — time from finding to comment | Below 5 min = developers stay in flow; above 30 min = they ignore findings |
+| **Comment quality score** — sampled by security team weekly | Bad comments train developers to ignore the agent. Aim for ≥ 80% useful |
+| **Hook denial rate** — how often guardrails block the agent | Rising = your prompts are drifting; revisit instructions |
+
+These three numbers tell you whether the agent is earning its keep. **Pick one pilot repo, run it for two weeks, then decide whether to roll out broader.**
+
+---
+
 ### How to Use This Agent
 
 **In VS Code:**
 
 ```
-@copilot Review the open Veracode findings for severity ≥ medium on this branch.
+@veracode-triage Review the open Veracode findings for severity ≥ medium on this branch.
 For each true positive that you can fix in <50 lines, open a PR with the fix.
 For others, post a comment with: CWE, file:line, suggested remediation, and risk score.
 ```
@@ -374,13 +651,14 @@ jobs:
           file: ./build/libs/app.jar
           fail_build: false
 
-      - name: Assign findings to Copilot for triage
+      - name: Assign findings to veracode-triage agent
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} \
-            --body "@copilot Triage the Veracode findings attached as artifact 'pipeline-scan-results.json'.
-            For each MEDIUM+ severity, post a review comment with CWE, location, and a fix suggestion."
+            --body "@veracode-triage please review the Veracode findings in the latest scan.
+            The SARIF report is attached as workflow artifact 'pipeline-scan-results.json'
+            (run ID: ${{ github.run_id }})."
 ```
 
 ---
@@ -449,8 +727,8 @@ sequenceDiagram
     IR->>AWS: Query CloudWatch logs for auth errors
     AWS-->>IR: 412 errors spiking after deploy
     IR->>IR: Build hypothesis ranking
-    IR->>SLACK: Post incident summary + top-3 hypotheses + suggested rollback command
-    SLACK->>ONCALL: Notification
+    IR->>SLACK: Post incident summary +<br/>top-3 hypotheses +<br/>suggested rollback command
+    SLACK->>ONCALL: 📱 Notification
     ONCALL->>SLACK: Reviews hypothesis
     ONCALL->>AWS: Executes rollback (manually)
 
@@ -582,21 +860,21 @@ The ECS task definition pins the agent's IAM role to **read-only** scopes:
 
 ```mermaid
 flowchart TD
-    REQ([Service team submits issue])
+    REQ(["Service team submits issue<br/>'I need a new RDS for service X'"])
 
-    REQ --> AGENT[Infra Agent - researches and generates]
+    REQ --> AGENT["Infra Agent<br/>researches + generates"]
 
-    subgraph Plan phase - automated
+    subgraph PLAN["Plan phase — automated"]
         AGENT --> TF1[terraform init + plan]
         AGENT --> COST[infracost diff]
         AGENT --> POLICY[conftest verify]
         AGENT --> VAULT[vault policy preview]
     end
 
-    PLAN --> PR[PR opened - plan + cost + policy attached]
+    PLAN --> PR["PR opened<br/>plan + cost + policy attached"]
 
     PR --> REV{Human review}
-    REV -->|approve| APPLY[Protected workflow - terraform apply]
+    REV -->|approve| APPLY["Protected workflow<br/>terraform apply"]
     REV -->|reject| FB[Feedback to agent]
     FB --> AGENT
 
@@ -726,8 +1004,8 @@ jobs:
 
 ```mermaid
 flowchart TD
-    PR([PR merged to main]) --> BUILD[Build + scan - Veracode]
-    BUILD -->|passing| PUSH[Push image to ECR]
+    PR([PR merged to main]) --> BUILD["Build + scan<br/>Veracode"]
+    BUILD -->|✅ passing| PUSH["Push image<br/>to ECR"]
     PUSH --> AGENT[Deployment Agent]
 
     AGENT --> PRE[Pre-flight checks]
@@ -737,17 +1015,17 @@ flowchart TD
 
     PRE --> ENV{Target env?}
 
-    ENV -->|dev / staging| AUTODEPLOY[Auto-deploy - ECS rolling update]
-    ENV -->|prod| APPROVE[GitHub Environment approval gate]
+    ENV -->|dev / staging| AUTODEPLOY["Auto-deploy<br/>ECS rolling update"]
+    ENV -->|prod| APPROVE["GitHub Environment<br/>approval gate 👤"]
 
-    APPROVE -->|approved| CANARY[Canary deploy - 10% traffic]
+    APPROVE -->|approved| CANARY["Canary deploy<br/>10% traffic"]
 
-    CANARY --> WATCH[Watch SLIs - 10 min bake]
-    WATCH -->|within SLO| PROMOTE[Promote 100%]
-    WATCH -->|SLO breach| ROLLBACK[Auto-rollback - prev task def]
+    CANARY --> WATCH["Watch SLIs<br/>10 min bake"]
+    WATCH -->|✅ within SLO| PROMOTE[Promote 100%]
+    WATCH -->|❌ SLO breach| ROLLBACK["Auto-rollback<br/>prev task def"]
 
     PROMOTE --> DONE([Deploy complete])
-    ROLLBACK --> ALERT[Alert + open PR with bug report]
+    ROLLBACK --> ALERT["Alert + open PR<br/>with bug report"]
 
     style APPROVE fill:#fef3c7,stroke:#f59e0b,color:#78350f
     style ROLLBACK fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
@@ -888,18 +1166,18 @@ jobs:
 
 ```mermaid
 flowchart LR
-    subgraph Control catalog repo
-        CTL[soc2.yaml - iso27001.yaml - mapping.yaml]
+    subgraph CAT["Control catalog repo"]
+        CTL["controls/soc2.yaml<br/>controls/iso27001.yaml<br/>mapping.yaml"]
     end
 
-    subgraph Compliance Agent on ECS Fargate
+    subgraph AGENT["Compliance Agent<br/>on ECS Fargate"]
         SCH[Scheduler]
         VER[Verifier]
         REP[Reporter]
         SCH --> VER --> REP
     end
 
-    subgraph Evidence sources
+    subgraph SRC["Evidence sources"]
         ACFG[AWS Config]
         CT[CloudTrail]
         GAUD[GitHub Audit Log]
@@ -907,11 +1185,11 @@ flowchart LR
         VC2[Veracode results]
     end
 
-    subgraph Outputs
-        S3[S3 evidence bucket - object-locked]
-        DASH[Compliance dashboard - Grafana]
-        ISS[GitHub Issues for failed controls]
-        RPT[Audit PDF on-demand]
+    subgraph OUT["Outputs"]
+        S3["S3 evidence bucket<br/>object-locked"]
+        DASH["Compliance dashboard<br/>Grafana"]
+        ISS["GitHub Issues<br/>for failed controls"]
+        RPT["Audit PDF<br/>on-demand"]
     end
 
     CAT --> AGENT
@@ -999,53 +1277,53 @@ This is how all six agents fit together in production.
 
 ```mermaid
 flowchart TB
-    subgraph Human Interfaces
-        VSC[VS Code + Copilot]
-        BROWSER[github.com - Issues + PRs]
-        SLACK[Slack / MS Teams]
+    subgraph HUMAN["👤 Human Interfaces"]
+        VSC["VS Code<br/>+ Copilot agent mode"]
+        BROWSER["github.com<br/>Issues + PRs"]
+        SLACK["Slack /<br/>MS Teams"]
     end
 
-    subgraph GitHub EMU
-        CCA[Copilot Cloud Agent]
-        REPOS[Repos / Issues / PRs]
+    subgraph GH["🐙 GitHub EMU"]
+        CCA["Copilot Cloud Agent<br/>for code-centric tasks"]
+        REPOS["Repos / Issues / PRs"]
         ACT[GitHub Actions]
         MCP[GitHub MCP Server]
-        AUDIT[Audit log to SIEM]
+        AUDIT["Audit log<br/>→ SIEM"]
     end
 
-    subgraph Identity and Secrets
-        OIDC[OIDC trust - GitHub to AWS]
-        IAM[IAM roles per agent - least privilege]
-        VAULT[Vault on EC2 - AppRole + AWS auth]
+    subgraph IDENT["🔑 Identity & Secrets"]
+        OIDC["OIDC trust<br/>GitHub → AWS"]
+        IAM["IAM roles per agent<br/>least privilege"]
+        VAULT["Vault on EC2<br/>AppRole + AWS auth"]
         SM[Secrets Manager]
     end
 
-    subgraph Compute
-        CB[Self-hosted runners on AWS CodeBuild]
-        ECS[ECS Fargate - long-running agents]
+    subgraph RUNNERS["⚙️ Compute"]
+        CB["Self-hosted runners<br/>on AWS CodeBuild<br/>for GHA workloads"]
+        ECS["ECS Fargate<br/>for long-running agents"]
     end
 
-    subgraph Agent Fleet
-        CICD[CI/CD Agent]
+    subgraph AGENTS["🤖 Agent Fleet"]
+        CICD["CI/CD Agent"]
         SEC[Security Agent]
-        IR[Incident Response Agent]
+        IR["Incident Response<br/>Agent"]
         INFRA[Infra Agent]
         DEP[Deployment Agent]
         COMP[Compliance Agent]
     end
 
-    subgraph Tool Integration
+    subgraph TOOLS["🔧 Tool Integration"]
         VC[Veracode API]
         AWSAPI[AWS APIs]
-        DD[Datadog / CloudWatch]
+        DD["Datadog /<br/>CloudWatch"]
         PD[PagerDuty]
         TF[Terraform]
     end
 
-    subgraph Observability
+    subgraph OBS["📊 Observability"]
         XR[X-Ray traces]
-        CW[CloudWatch Logs + Metrics]
-        LF[Langfuse LLM traces]
+        CW["CloudWatch<br/>Logs + Metrics"]
+        LF["Langfuse<br/>LLM traces"]
     end
 
     HUMAN --> GH
@@ -1095,28 +1373,28 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    subgraph Week 1 - Foundation
-        W1A[Enable Copilot Cloud Agent in EMU]
-        W1B[Configure OIDC trust - GitHub to AWS]
-        W1C[Define agent IAM roles - least-privilege]
+    subgraph W1["Week 1 — Foundation"]
+        W1A["Enable Copilot Cloud Agent<br/>in EMU for one pilot repo"]
+        W1B["Configure OIDC trust<br/>GitHub ↔ AWS"]
+        W1C["Define agent IAM roles<br/>least-privilege per type"]
     end
 
-    subgraph Week 2 - First agent CI/CD
-        W2A[Deploy CI/CD agent via Copilot Cloud Agent]
-        W2B[Auto-triage workflow on failed builds]
-        W2C[Measure PR turnaround + flake rate]
+    subgraph W2["Week 2 — First agent: CI/CD"]
+        W2A["Deploy CI/CD agent<br/>via Copilot Cloud Agent"]
+        W2B["Auto-triage workflow<br/>on failed builds"]
+        W2C["Measure: PR turnaround<br/>+ flake rate"]
     end
 
-    subgraph Week 3 - Security agent
-        W3A[Veracode + Copilot integration via MCP]
-        W3B[PR review agent - read-only first]
-        W3C[Configure firewall + pre-tool-use hooks]
+    subgraph W3["Week 3 — Security agent"]
+        W3A["Veracode + Copilot<br/>integration via MCP"]
+        W3B[PR review agent<br/>(read-only first)]
+        W3C["Configure firewall<br/>+ pre-tool-use hooks"]
     end
 
-    subgraph Week 4 - Scale and govern
-        W4A[Deploy compliance agent to ECS]
-        W4B[Stream all agent traces to SIEM]
-        W4C[Define agent registry + ownership]
+    subgraph W4["Week 4 — Scale + govern"]
+        W4A["Deploy compliance agent<br/>to ECS"]
+        W4B["Stream all agent traces<br/>to SIEM"]
+        W4C["Define agent registry<br/>+ ownership"]
     end
 
     W1 --> W2 --> W3 --> W4
