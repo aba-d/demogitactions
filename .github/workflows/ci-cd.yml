@@ -82,7 +82,7 @@ jobs:
     uses: aba-enterprise/enterprise-ci-templates/.github/workflows/docker-build-push.yml@main
     with:
       language: 'csharp'
-      project-path: 'dotnet-ecs-sample/dotnet-ecs-sample.csproj'
+      project-path: 'dotnet-ecs-sample'
       dockerfile-path: 'dotnet-ecs-sample/Dockerfile'
       language-version: '8.0' 
       environment: 'dev'
@@ -101,11 +101,24 @@ jobs:
   # ------------------------
   # Deploy to Dev (auto) ECS Task + Service
   # ------------------------
-  ecs-deploy-dev:
-    name: Deploy to Dev
+  # ecs-deploy-dev:
+  #   name: Deploy to Dev
+  #   needs: ci
+  #   if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+  #   uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+  #   with:
+  #     service-name: ${{ vars.SERVICE_NAME }}
+  #     task-family: ${{ vars.TASK_FAMILY }}
+  #     container-name: ${{ vars.CONTAINER_NAME }}
+  #     desired-count: ${{ vars.DESIRED_COUNT }}
+  #     image-tag: ${{ github.sha }}
+  #     environment: dev
+  #   secrets: inherit
+
+  ecs-deploy-dev1:
     needs: ci
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+    name: Deploy to Dev - Single Image
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-deployment-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
       task-family: ${{ vars.TASK_FAMILY }}
@@ -113,16 +126,17 @@ jobs:
       desired-count: ${{ vars.DESIRED_COUNT }}
       image-tag: ${{ github.sha }}
       environment: dev
-    secrets: inherit
+      language: csharp
+      extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-dev\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
 
   # # ------------------------
   # # Deploy to QA (requires approval)
   # # ------------------------
   ecs-deploy-qa:
     name: Deploy to QA
-    needs: ecs-deploy-dev
+    needs: ecs-deploy-dev1
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
-    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-taskservice-template.yml@main
+    uses: aba-enterprise/enterprise-ci-templates/.github/workflows/ecs-deployment-template.yml@main
     with:
       service-name: ${{ vars.SERVICE_NAME }}
       task-family: ${{ vars.TASK_FAMILY }}
@@ -130,37 +144,39 @@ jobs:
       desired-count: ${{ vars.DESIRED_COUNT }}
       image-tag: ${{ github.sha }}
       environment: qa
+      language: csharp
+      extra-env: '[{\"name\":\"DB_URL\",\"value\":\"jdbc://mydb-qa\"},{\"name\":\"FEATURE_FLAG\",\"value\":\"true\"}]'
     secrets: inherit
 
   # ------------------------
   # Notify the Jira
   # ------------------------
-  notify-jira:
-    name: Jira Notify
-    runs-on: ubuntu-latest
-    needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan, ecs-deploy-qa]
-    if: |
-      needs.Codeql-scan.result == 'failure' ||
-      needs.ci.result == 'failure' ||
-      needs.ecs-deploy-dev.result == 'failure' ||
-      needs.Sonarqube-scan.result == 'failure' ||
-      needs.Veracode-scan.result == 'failure' ||
-      (needs.ecs-deploy-qa.result != 'cancelled' && needs.ecs-deploy-qa.result == 'failure')
-    steps:
-      - name: Create Jira Bug
-        run: |
-          curl -X POST https://abasahebdubal.atlassian.net/rest/api/2/issue \
-          -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "fields": {
-              "project": { "key": "SCRUM" },
-              "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
-              "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-              "issuetype": { "id": "10007" },
-              "parent": { "key": "SCRUM-2" }
-            }
-          }'
+  # notify-jira:
+  #   name: Jira Notify
+  #   runs-on: ubuntu-latest
+  #   needs: [Codeql-scan, ci, ecs-deploy-dev, Sonarqube-scan, Veracode-scan, ecs-deploy-qa]
+  #   if: |
+  #     needs.Codeql-scan.result == 'failure' ||
+  #     needs.ci.result == 'failure' ||
+  #     needs.ecs-deploy-dev.result == 'failure' ||
+  #     needs.Sonarqube-scan.result == 'failure' ||
+  #     needs.Veracode-scan.result == 'failure' ||
+  #     (needs.ecs-deploy-qa.result != 'cancelled' && needs.ecs-deploy-qa.result == 'failure')
+  #   steps:
+  #     - name: Create Jira Bug
+  #       run: |
+  #         curl -X POST https://abasahebdubal.atlassian.net/rest/api/2/issue \
+  #         -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
+  #         -H "Content-Type: application/json" \
+  #         -d '{
+  #           "fields": {
+  #             "project": { "key": "SCRUM" },
+  #             "summary": "CI Pipeline Failed - ${{ github.workflow }} #${{ github.run_number }}",
+  #             "description": "One or more jobs failed.\nRepo: ${{ github.repository }}\nRun URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+  #             "issuetype": { "id": "10007" },
+  #             "parent": { "key": "SCRUM-2" }
+  #           }
+  #         }'
   
   # # ------------------------
   # # Deploy to Prod (requires approval)
@@ -177,4 +193,3 @@ jobs:
   #     image-tag: ${{ github.sha }}
   #     environment: prod
   #   secrets: inherit
-  
